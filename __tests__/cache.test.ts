@@ -68,6 +68,38 @@ describe('cache.ts', () => {
     )
   })
 
+  it('skips restore when the cache feature is unavailable', async () => {
+    toolkitCache.isFeatureAvailable.mockReturnValue(false)
+
+    await restoreStaticSiteClientCache()
+
+    expect(core.saveState).toHaveBeenCalledWith(CacheState.PostRun, 'true')
+    expect(staticSiteClient.getDeployCacheInfo).not.toHaveBeenCalled()
+    expect(core.warning).toHaveBeenCalledWith(
+      'The runner was not able to contact the cache service. StaticSitesClient caching will be skipped.'
+    )
+  })
+
+  it('skips restore when cache metadata cannot be resolved', async () => {
+    staticSiteClient.getDeployCacheInfo.mockResolvedValueOnce(undefined)
+
+    await restoreStaticSiteClientCache()
+
+    expect(toolkitCache.restoreCache).not.toHaveBeenCalled()
+    expect(core.warning).toHaveBeenCalledWith(
+      'StaticSitesClient metadata could not be resolved for cache restore. Caching will be skipped.'
+    )
+  })
+
+  it('logs a cache miss when no cache entry is restored', async () => {
+    await restoreStaticSiteClientCache()
+
+    expect(core.saveState).toHaveBeenCalledWith(CacheState.MatchedKey, '')
+    expect(core.info).toHaveBeenCalledWith(
+      'StaticSitesClient cache is not found'
+    )
+  })
+
   it('saves StaticSitesClient cache on cache miss', async () => {
     await saveStaticSiteClientCache()
 
@@ -98,6 +130,60 @@ describe('cache.ts', () => {
     expect(toolkitCache.saveCache).not.toHaveBeenCalled()
     expect(core.info).toHaveBeenCalledWith(
       'Cache hit occurred on the primary key swa-deploy-static-sites-client-linux-x64-build-sha, not saving cache.'
+    )
+  })
+
+  it('does not save cache when the cache feature is unavailable', async () => {
+    toolkitCache.isFeatureAvailable.mockReturnValue(false)
+
+    await saveStaticSiteClientCache()
+
+    expect(toolkitCache.saveCache).not.toHaveBeenCalled()
+  })
+
+  it('does not save cache when no primary key is stored', async () => {
+    core.getState.mockImplementation((name: string) => {
+      const values: Record<string, string> = {
+        [CacheState.PrimaryKey]: '',
+        [CacheState.MatchedKey]: '',
+        [CacheState.Paths]: JSON.stringify([cacheDirectory])
+      }
+
+      return values[name] ?? ''
+    })
+
+    await saveStaticSiteClientCache()
+
+    expect(toolkitCache.saveCache).not.toHaveBeenCalled()
+  })
+
+  it('does not save cache when none of the stored cache paths exist', async () => {
+    const missingPath = path.join(cacheDirectory, 'missing')
+
+    core.getState.mockImplementation((name: string) => {
+      const values: Record<string, string> = {
+        [CacheState.PrimaryKey]:
+          'swa-deploy-static-sites-client-linux-x64-build-sha',
+        [CacheState.MatchedKey]: '',
+        [CacheState.Paths]: JSON.stringify([missingPath])
+      }
+
+      return values[name] ?? ''
+    })
+
+    await saveStaticSiteClientCache()
+
+    expect(toolkitCache.saveCache).not.toHaveBeenCalled()
+  })
+
+  it('does not log success when the cache service skips saving', async () => {
+    toolkitCache.saveCache.mockResolvedValueOnce(-1)
+
+    await saveStaticSiteClientCache()
+
+    expect(toolkitCache.saveCache).toHaveBeenCalledTimes(1)
+    expect(core.info).not.toHaveBeenCalledWith(
+      'StaticSitesClient cache saved with the key: swa-deploy-static-sites-client-linux-x64-build-sha'
     )
   })
 })

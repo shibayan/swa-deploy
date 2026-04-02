@@ -23,8 +23,7 @@ describe('main.ts', () => {
   beforeEach(() => {
     core.getInput.mockImplementation((name: string) => {
       const inputs: Record<string, string> = {
-        app_location: '.',
-        output_location: 'dist',
+        app_location: 'dist',
         environment: 'production'
       }
 
@@ -44,6 +43,14 @@ describe('main.ts', () => {
     await run()
 
     expect(cache.restoreStaticSiteClientCache).toHaveBeenCalledTimes(1)
+    expect(runDeployment).toHaveBeenCalledWith({
+      appLocation: 'dist',
+      apiLocation: undefined,
+      deploymentToken: undefined,
+      environment: 'production',
+      apiLanguage: undefined,
+      apiVersion: undefined
+    })
     expect(core.setOutput).toHaveBeenNthCalledWith(
       1,
       'deployment_url',
@@ -70,5 +77,60 @@ describe('main.ts', () => {
       'Failed to restore the StaticSitesClient cache: cache restore failed'
     )
     expect(runDeployment).toHaveBeenCalledTimes(1)
+  })
+
+  it('Ignores non-Error cache restore failures and continues deployment', async () => {
+    cache.restoreStaticSiteClientCache.mockRejectedValueOnce(
+      'cache restore failed'
+    )
+
+    await run()
+
+    expect(core.warning).not.toHaveBeenCalledWith(
+      'Failed to restore the StaticSitesClient cache: cache restore failed'
+    )
+    expect(runDeployment).toHaveBeenCalledTimes(1)
+  })
+
+  it('Uses defaults when optional inputs are blank', async () => {
+    core.getInput.mockImplementation((name: string) => {
+      const inputs: Record<string, string> = {
+        app_location: '   ',
+        api_location: '   ',
+        deployment_token: '   ',
+        environment: '   ',
+        api_language: '   ',
+        api_version: '   '
+      }
+
+      return inputs[name] ?? ''
+    })
+
+    await run()
+
+    expect(runDeployment).toHaveBeenCalledWith({
+      appLocation: '.',
+      apiLocation: undefined,
+      deploymentToken: undefined,
+      environment: 'production',
+      apiLanguage: undefined,
+      apiVersion: undefined
+    })
+  })
+
+  it('Does not set deployment_url when deployment does not return one', async () => {
+    runDeployment.mockResolvedValueOnce({})
+
+    await run()
+
+    expect(core.setOutput).not.toHaveBeenCalled()
+  })
+
+  it('Ignores non-Error deployment failures', async () => {
+    runDeployment.mockRejectedValueOnce('deployment failed')
+
+    await run()
+
+    expect(core.setFailed).not.toHaveBeenCalled()
   })
 })

@@ -25,16 +25,14 @@ All relative paths are resolved from the current working directory.
 
 ## Inputs
 
-| Name                  | Required | Default      | Description                                                                           |
-| --------------------- | -------- | ------------ | ------------------------------------------------------------------------------------- |
-| `app_location`        | No       | `.`          | Directory that contains the front-end source or deployment root                       |
-| `output_location`     | No       | `.`          | Directory that contains built front-end assets, relative to `app_location` by default |
-| `api_location`        | No       |              | Directory that contains the Azure Functions API                                       |
-| `swa_config_location` | No       |              | Directory that contains `staticwebapp.config.json`                                    |
-| `deployment_token`    | No       |              | Deployment token. Falls back to `SWA_CLI_DEPLOYMENT_TOKEN`                            |
-| `environment`         | No       | `production` | Target environment such as `preview` or `production`                                  |
-| `api_language`        | No       |              | API runtime language such as `node`, `python`, `dotnet`, or `dotnetisolated`          |
-| `api_version`         | No       |              | API runtime version                                                                   |
+| Name               | Required | Default      | Description                                                                  |
+| ------------------ | -------- | ------------ | ---------------------------------------------------------------------------- |
+| `app_location`     | No       | `.`          | Directory that contains the prebuilt front-end assets to deploy              |
+| `api_location`     | No       |              | Directory that contains the Azure Functions API                              |
+| `deployment_token` | No       |              | Deployment token. Falls back to `SWA_CLI_DEPLOYMENT_TOKEN`                   |
+| `environment`      | No       | `production` | Target environment such as `preview` or `production`                         |
+| `api_language`     | No       |              | API runtime language such as `node`, `python`, `dotnet`, or `dotnetisolated` |
+| `api_version`      | No       |              | API runtime version                                                          |
 
 ## Outputs
 
@@ -67,8 +65,7 @@ jobs:
         id: deploy
         uses: shibayan/swa-deploy@v1
         with:
-          app_location: .
-          output_location: dist
+          app_location: dist
           environment: production
           deployment_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
 
@@ -82,13 +79,14 @@ jobs:
 - name: Deploy to Azure Static Web Apps
   uses: shibayan/swa-deploy@v1
   with:
-    app_location: .
-    output_location: dist
+    app_location: dist
     api_location: api
     api_language: node
     environment: preview
     deployment_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
 ```
+
+`staticwebapp.config.json` is detected only from `app_location`.
 
 ## Built-in Caching
 

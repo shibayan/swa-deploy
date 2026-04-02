@@ -7,9 +7,7 @@ import { cleanUp, getDeployClientPath } from './static-site-client.js'
 
 export interface DeployInputs {
   appLocation?: string
-  outputLocation?: string
   apiLocation?: string
-  swaConfigLocation?: string
   deploymentToken?: string
   environment?: string
   apiLanguage?: string
@@ -61,13 +59,7 @@ export async function runDeployment(
     throw new Error(`The app_location folder "${appLocation}" does not exist.`)
   }
 
-  const outputLocation = resolveOutputLocation(
-    appLocation,
-    currentDirectory,
-    inputs.outputLocation ?? '.'
-  )
-
-  dependencies.info(`Deploying front-end files from folder: ${outputLocation}`)
+  dependencies.info(`Deploying front-end files from folder: ${appLocation}`)
 
   let apiLocation: string | undefined
   if (inputs.apiLocation) {
@@ -107,9 +99,6 @@ export async function runDeployment(
   }
 
   const configLocation = resolveConfigLocation({
-    currentDirectory,
-    explicitLocation: inputs.swaConfigLocation,
-    outputLocation,
     appLocation
   })
 
@@ -127,11 +116,11 @@ export async function runDeployment(
     SKIP_APP_BUILD: 'true',
     SKIP_API_BUILD: 'true',
     DEPLOYMENT_TOKEN: deploymentToken,
-    APP_LOCATION: outputLocation,
-    OUTPUT_LOCATION: outputLocation,
+    APP_LOCATION: appLocation,
+    OUTPUT_LOCATION: appLocation,
     API_LOCATION: apiLocation,
     CONFIG_FILE_LOCATION:
-      configLocation && configLocation !== outputLocation
+      configLocation && configLocation !== appLocation
         ? configLocation
         : undefined,
     FUNCTION_LANGUAGE: inputs.apiLanguage,
@@ -169,27 +158,6 @@ export function getDefaultApiVersion(apiLanguage: string): string {
   }
 }
 
-function resolveOutputLocation(
-  appLocation: string,
-  workingDirectory: string,
-  outputLocation: string
-): string {
-  const relativeToApp = path.resolve(appLocation, outputLocation)
-  if (fs.existsSync(relativeToApp)) {
-    return relativeToApp
-  }
-
-  const absoluteOrWorkingDirectory = path.resolve(
-    workingDirectory,
-    outputLocation
-  )
-  if (fs.existsSync(absoluteOrWorkingDirectory)) {
-    return absoluteOrWorkingDirectory
-  }
-
-  throw new Error(`The folder "${relativeToApp}" is not found.`)
-}
-
 function resolveOptionalDirectory(
   workingDirectory: string,
   location: string | undefined,
@@ -210,31 +178,12 @@ function resolveOptionalDirectory(
 }
 
 function resolveConfigLocation(options: {
-  currentDirectory: string
-  explicitLocation?: string
-  outputLocation: string
   appLocation: string
 }): string | undefined {
-  if (options.explicitLocation) {
-    const explicitLocation = path.resolve(
-      options.currentDirectory,
-      options.explicitLocation
-    )
-    assertConfigExists(explicitLocation)
-    return explicitLocation
-  }
-
-  const candidates = [options.outputLocation, options.appLocation]
+  const candidates = [options.appLocation]
   return candidates.find((candidate) =>
     fs.existsSync(path.join(candidate, SWA_CONFIG_FILENAME))
   )
-}
-
-function assertConfigExists(location: string): void {
-  const configPath = path.join(location, SWA_CONFIG_FILENAME)
-  if (!fs.existsSync(configPath)) {
-    throw new Error(`The config file "${configPath}" was not found.`)
-  }
 }
 
 async function findApiFolderInPath(

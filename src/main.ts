@@ -21,9 +21,7 @@ export async function run(): Promise<void> {
 
     const result = await runDeployment({
       appLocation: getOptionalInput('app_location') ?? '.',
-      outputLocation: getOptionalInput('output_location') ?? '.',
       apiLocation: getOptionalInput('api_location'),
-      swaConfigLocation: getOptionalInput('swa_config_location'),
       deploymentToken: getOptionalInput('deployment_token'),
       environment: getOptionalInput('environment') ?? 'production',
       apiLanguage: getOptionalInput('api_language'),

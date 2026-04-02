@@ -74472,8 +74472,7 @@ async function runDeployment(inputs, overrides = {}) {
     if (!fs$1.existsSync(appLocation)) {
         throw new Error(`The app_location folder "${appLocation}" does not exist.`);
     }
-    const outputLocation = resolveOutputLocation(appLocation, currentDirectory, inputs.outputLocation ?? '.');
-    dependencies.info(`Deploying front-end files from folder: ${outputLocation}`);
+    dependencies.info(`Deploying front-end files from folder: ${appLocation}`);
     let apiLocation;
     if (inputs.apiLocation) {
         apiLocation = resolveOptionalDirectory(currentDirectory, inputs.apiLocation, 'API');
@@ -74498,9 +74497,6 @@ async function runDeployment(inputs, overrides = {}) {
         throw new Error('A deployment token is required to deploy to Azure Static Web Apps');
     }
     const configLocation = resolveConfigLocation({
-        currentDirectory,
-        explicitLocation: inputs.swaConfigLocation,
-        outputLocation,
         appLocation
     });
     dependencies.info(`Deploying to environment: ${deploymentEnvironment}`);
@@ -74515,10 +74511,10 @@ async function runDeployment(inputs, overrides = {}) {
         SKIP_APP_BUILD: 'true',
         SKIP_API_BUILD: 'true',
         DEPLOYMENT_TOKEN: deploymentToken,
-        APP_LOCATION: outputLocation,
-        OUTPUT_LOCATION: outputLocation,
+        APP_LOCATION: appLocation,
+        OUTPUT_LOCATION: appLocation,
         API_LOCATION: apiLocation,
-        CONFIG_FILE_LOCATION: configLocation && configLocation !== outputLocation
+        CONFIG_FILE_LOCATION: configLocation && configLocation !== appLocation
             ? configLocation
             : undefined,
         FUNCTION_LANGUAGE: inputs.apiLanguage,
@@ -74552,17 +74548,6 @@ function getDefaultApiVersion(apiLanguage) {
             return '22';
     }
 }
-function resolveOutputLocation(appLocation, workingDirectory, outputLocation) {
-    const relativeToApp = path$1.resolve(appLocation, outputLocation);
-    if (fs$1.existsSync(relativeToApp)) {
-        return relativeToApp;
-    }
-    const absoluteOrWorkingDirectory = path$1.resolve(workingDirectory, outputLocation);
-    if (fs$1.existsSync(absoluteOrWorkingDirectory)) {
-        return absoluteOrWorkingDirectory;
-    }
-    throw new Error(`The folder "${relativeToApp}" is not found.`);
-}
 function resolveOptionalDirectory(workingDirectory, location, kind) {
     if (!location) {
         return undefined;
@@ -74574,19 +74559,8 @@ function resolveOptionalDirectory(workingDirectory, location, kind) {
     return resolvedLocation;
 }
 function resolveConfigLocation(options) {
-    if (options.explicitLocation) {
-        const explicitLocation = path$1.resolve(options.currentDirectory, options.explicitLocation);
-        assertConfigExists(explicitLocation);
-        return explicitLocation;
-    }
-    const candidates = [options.outputLocation, options.appLocation];
+    const candidates = [options.appLocation];
     return candidates.find((candidate) => fs$1.existsSync(path$1.join(candidate, SWA_CONFIG_FILENAME)));
-}
-function assertConfigExists(location) {
-    const configPath = path$1.join(location, SWA_CONFIG_FILENAME);
-    if (!fs$1.existsSync(configPath)) {
-        throw new Error(`The config file "${configPath}" was not found.`);
-    }
 }
 async function findApiFolderInPath(appPath) {
     const entries = await fs$1.promises.readdir(appPath, { withFileTypes: true });
@@ -74689,9 +74663,7 @@ async function run() {
         }
         const result = await runDeployment({
             appLocation: getOptionalInput('app_location') ?? '.',
-            outputLocation: getOptionalInput('output_location') ?? '.',
             apiLocation: getOptionalInput('api_location'),
-            swaConfigLocation: getOptionalInput('swa_config_location'),
             deploymentToken: getOptionalInput('deployment_token'),
             environment: getOptionalInput('environment') ?? 'production',
             apiLanguage: getOptionalInput('api_language'),

@@ -11,20 +11,10 @@ branding:
 # Define your inputs here.
 inputs:
   app_location:
-    description: Directory that contains the front-end source or deployment root
+    description: Directory that contains the prebuilt front-end assets to deploy
     required: false
-    default: '.'
-  output_location:
-    description:
-      Directory that contains the built front-end assets, relative to
-      app_location by default
-    required: false
-    default: '.'
   api_location:
     description: Directory that contains the Azure Functions API to deploy
-    required: false
-  swa_config_location:
-    description: Directory that contains staticwebapp.config.json
     required: false
   deployment_token:
     description:
