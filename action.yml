@@ -1,24 +1,58 @@
-name: The name of your action here
-description: Provide a description here
-author: Your name or organization here
+name: Deploy Azure Static Web Apps
+description:
+  Deploy prebuilt assets to Azure Static Web Apps using StaticSitesClient
+author: shibayan
 
 # Add your action's branding here. This will appear on the GitHub Marketplace.
 branding:
-  icon: heart
-  color: red
+  icon: upload-cloud
+  color: blue
 
 # Define your inputs here.
 inputs:
-  milliseconds:
-    description: Your input description here
-    required: true
-    default: '1000'
+  app_location:
+    description: Directory that contains the front-end source or deployment root
+    required: false
+    default: '.'
+  output_location:
+    description:
+      Directory that contains the built front-end assets, relative to
+      app_location by default
+    required: false
+    default: '.'
+  api_location:
+    description: Directory that contains the Azure Functions API to deploy
+    required: false
+  swa_config_location:
+    description: Directory that contains staticwebapp.config.json
+    required: false
+  deployment_token:
+    description:
+      Deployment token for the target Static Web App. Falls back to
+      SWA_CLI_DEPLOYMENT_TOKEN when omitted
+    required: false
+  environment:
+    description: Target deployment environment such as preview or production
+    required: false
+    default: 'production'
+  api_language:
+    description:
+      Function runtime language for the API, for example node, python, dotnet,
+      or dotnetisolated
+    required: false
+  api_version:
+    description: Function runtime version for the API
+    required: false
 
 # Define your outputs here.
 outputs:
-  time:
-    description: Your output description here
+  deployment_url:
+    description:
+      URL emitted by StaticSitesClient after a successful deployment when
+      available
 
 runs:
   using: node24
   main: dist/index.js
+  post: dist/index.js
+  post-if: always()
