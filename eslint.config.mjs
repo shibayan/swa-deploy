@@ -52,7 +52,7 @@ export default [
             '__tests__/*.ts',
             'eslint.config.mjs',
             'jest.config.js',
-            'rollup.config.ts'
+            'rolldown.config.ts'
           ]
         },
         tsconfigRootDir: import.meta.dirname

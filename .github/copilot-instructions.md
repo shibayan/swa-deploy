@@ -35,7 +35,7 @@ it is generated from.
 | `LICENSE`            | License File                                             |
 | `package.json`       | NPM Package Configuration                                |
 | `README.md`          | Project Documentation                                    |
-| `rollup.config.ts`   | Rollup Bundler Configuration                             |
+| `rolldown.config.ts` | Rolldown Bundler Configuration                           |
 | `tsconfig.json`      | TypeScript Configuration                                 |
 
 ## Environment Setup
