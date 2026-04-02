@@ -171,7 +171,7 @@ describe('deploy.ts', () => {
     )
 
     expect(dependencies.warning).toHaveBeenCalledWith(
-      'An API folder was found at ".\\api" but api_location was not provided. The API will not be deployed.'
+      'An API folder was found at "./api" but api_location was not provided. The API will not be deployed.'
     )
     const [, , options] = spawn.mock.calls[0]
     expect(options.env.API_LOCATION).toBeUndefined()

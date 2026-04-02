@@ -72,8 +72,9 @@ export async function runDeployment(
   } else {
     const apiFolder = await findApiFolderInPath(appLocation)
     if (apiFolder) {
+      const detectedApiPath = `./${apiFolder}`
       dependencies.warning(
-        `An API folder was found at ".${path.sep}${apiFolder}" but api_location was not provided. The API will not be deployed.`
+        `An API folder was found at "${detectedApiPath}" but api_location was not provided. The API will not be deployed.`
       )
     }
   }
