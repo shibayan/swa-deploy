@@ -2,7 +2,7 @@
 
 ![Coverage](./badges/coverage.svg)
 
-Deploy prebuilt front-end assets, Azure Functions APIs, and Static Web Apps Data
+Deploy prebuilt frontend assets, Azure Functions APIs, and Static Web Apps Data
 API configuration to Azure Static Web Apps from a GitHub Actions workflow.
 
 This action follows the same deployment model as the Azure Static Web Apps CLI
@@ -14,7 +14,7 @@ Actions cache service.
 
 ## What This Action Does
 
-- Uploads already built front-end assets to Azure Static Web Apps
+- Uploads already built frontend assets to Azure Static Web Apps
 - Optionally uploads an Azure Functions API folder
 - Supports preview or production deployments
 - Restores and saves `~/.swa/deploy` automatically across workflow runs
@@ -27,7 +27,7 @@ All relative paths are resolved from the current working directory.
 
 | Name               | Required | Default      | Description                                                                  |
 | ------------------ | -------- | ------------ | ---------------------------------------------------------------------------- |
-| `app_location`     | No       | `.`          | Directory that contains the prebuilt front-end assets to deploy              |
+| `app_location`     | No       | `.`          | Directory that contains the prebuilt frontend assets to deploy               |
 | `api_location`     | No       |              | Directory that contains the Azure Functions API                              |
 | `deployment_token` | No       |              | Deployment token. Falls back to `SWA_CLI_DEPLOYMENT_TOKEN`                   |
 | `environment`      | No       | `production` | Target environment such as `preview` or `production`                         |
@@ -42,7 +42,7 @@ All relative paths are resolved from the current working directory.
 
 ## Usage
 
-### Deploy a built front-end
+### Deploy a built frontend
 
 ```yaml
 name: deploy
@@ -73,7 +73,7 @@ jobs:
         run: echo "${{ steps.deploy.outputs.deployment_url }}"
 ```
 
-### Deploy a front-end and API
+### Deploy a frontend and API
 
 ```yaml
 - name: Deploy to Azure Static Web Apps
@@ -107,7 +107,7 @@ The action requires a deployment token.
 You can get the token from:
 
 1. Azure portal: Static Web App -> Overview -> Manage deployment token
-2. Azure CLI:
+1. Azure CLI:
    `az staticwebapp secrets list --name <app-name> --query "properties.apiKey"`
 
 Store the token as a repository or environment secret and pass it through

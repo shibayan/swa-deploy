@@ -1,4 +1,4 @@
-import { jest } from '@jest/globals'
+import { afterAll as afterAllHook, jest } from '@jest/globals'
 import * as fs from 'node:fs/promises'
 import * as os from 'node:os'
 import * as path from 'node:path'
@@ -41,7 +41,7 @@ describe('static-site-client.ts', () => {
     await fs.rm(path.join(tempHome, '.swa'), { recursive: true, force: true })
   })
 
-  afterAll(async () => {
+  afterAllHook(async () => {
     jest.restoreAllMocks()
     await fs.rm(tempHome, { recursive: true, force: true })
   })
