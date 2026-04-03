@@ -35,7 +35,7 @@ describe('deploy.ts', () => {
         buildId: '1.2.3'
       }),
       spawn: jest.fn(),
-      cleanup: jest.fn(),
+      cleanUp: jest.fn(),
       info: jest.fn(),
       warning: jest.fn(),
       debug: jest.fn()
@@ -82,7 +82,7 @@ describe('deploy.ts', () => {
       },
       {
         spawn,
-        cleanup: dependencies.cleanup,
+        cleanUp: dependencies.cleanUp,
         getDeployClientPath: dependencies.getDeployClientPath,
         info: dependencies.info,
         warning: dependencies.warning,
@@ -103,7 +103,7 @@ describe('deploy.ts', () => {
     expect(options.env.CONFIG_FILE_LOCATION).toBeUndefined()
     expect(options.env.DEPLOYMENT_ENVIRONMENT).toBe('preview')
     expect(options.env.FUNCTION_LANGUAGE_VERSION).toBe('22')
-    expect(dependencies.cleanup).toHaveBeenCalledTimes(1)
+    expect(dependencies.cleanUp).toHaveBeenCalledTimes(1)
     expect(dependencies.info).toHaveBeenCalledWith('Preparing deployment')
     expect(dependencies.info).toHaveBeenCalledWith(
       expect.stringContaining('Deploying project to Azure Static Web Apps')
@@ -139,7 +139,7 @@ describe('deploy.ts', () => {
         dependencies
       )
     ).rejects.toThrow(
-      `The provided API folder ${path.join(tempRoot, 'missing-api')} does not exist.`
+      `The API folder "${path.join(tempRoot, 'missing-api')}" does not exist.`
     )
   })
 
@@ -249,7 +249,7 @@ describe('deploy.ts', () => {
     expect(dependencies.warning).toHaveBeenCalledWith(
       'Deployment failed: invalid token'
     )
-    expect(dependencies.cleanup).toHaveBeenCalledTimes(1)
+    expect(dependencies.cleanUp).toHaveBeenCalledTimes(1)
   })
 
   it('uses the generic exit-code error when the deploy client fails silently', async () => {

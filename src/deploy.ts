@@ -24,7 +24,7 @@ interface DeploymentDependencies {
     buildId: string
   }>
   spawn: typeof spawn
-  cleanup: () => void
+  cleanUp: () => void
   info: (message: string) => void
   warning: (message: string) => void
   debug: (message: string) => void
@@ -38,7 +38,7 @@ type DeployChildProcess = ChildProcess & {
 const defaultDependencies: DeploymentDependencies = {
   getDeployClientPath,
   spawn,
-  cleanup: cleanUp,
+  cleanUp,
   info: core.info,
   warning: core.warning,
   debug: core.debug
@@ -145,7 +145,7 @@ export async function runDeployment(
     const deploymentUrl = await watchDeployProcess(child, dependencies)
     return { deploymentUrl }
   } finally {
-    dependencies.cleanup()
+    dependencies.cleanUp()
   }
 }
 
@@ -174,7 +174,7 @@ function resolveOptionalDirectory(
   const resolvedLocation = path.resolve(workingDirectory, location)
   if (!fs.existsSync(resolvedLocation)) {
     throw new Error(
-      `The provided ${kind} folder ${resolvedLocation} does not exist.`
+      `The ${kind} folder "${resolvedLocation}" does not exist.`
     )
   }
 
@@ -185,14 +185,11 @@ function resolveConfigLocation(options: {
   appLocation: string
   workingDirectory: string
 }): string | undefined {
-  const candidates = [options.appLocation]
-  const configDirectory = candidates.find((candidate) =>
-    fs.existsSync(path.join(candidate, SWA_CONFIG_FILENAME))
-  )
+  if (!fs.existsSync(path.join(options.appLocation, SWA_CONFIG_FILENAME))) {
+    return undefined
+  }
 
-  return configDirectory
-    ? toRepositoryRelativePath(options.workingDirectory, configDirectory)
-    : undefined
+  return toRepositoryRelativePath(options.workingDirectory, options.appLocation)
 }
 
 function resolveRelativeDirectory(
@@ -312,7 +309,7 @@ function parseDeploymentUrl(line: string): string | undefined {
 }
 
 function sanitizeLine(line: string): string {
-  let sanitized = ''
+  const parts: string[] = []
 
   for (let index = 0; index < line.length; index += 1) {
     if (line[index] === '\u001b' && line[index + 1] === '[') {
@@ -325,10 +322,10 @@ function sanitizeLine(line: string): string {
       continue
     }
 
-    sanitized += line[index]
+    parts.push(line[index])
   }
 
-  return sanitized.trim()
+  return parts.join('').trim()
 }
 
 function isFailureLine(line: string): boolean {

@@ -38,7 +38,7 @@ export async function getDeployClientPath(
   const platform = getPlatform()
   const localClientMetadata = getLocalClientMetadata()
   const remoteClientMetadata =
-    await fetchClientVersionDefinition(releaseVersion)
+    await fetchReleaseMetadata(releaseVersion)
 
   if (!remoteClientMetadata) {
     throw new Error(
@@ -70,7 +70,7 @@ export async function getDeployCacheInfo(
 ): Promise<StaticSiteClientCacheInfo | undefined> {
   const platform = getPlatform()
   const remoteClientMetadata =
-    await fetchClientVersionDefinition(releaseVersion)
+    await fetchReleaseMetadata(releaseVersion)
 
   if (!remoteClientMetadata) {
     return undefined
@@ -92,12 +92,10 @@ export async function getDeployCacheInfo(
 export function cleanUp(): void {
   for (const file of ['app.zip', 'api.zip']) {
     const filePath = path.join(process.cwd(), file)
-    if (fs.existsSync(filePath)) {
-      try {
-        fs.unlinkSync(filePath)
-      } catch {
-        // Ignore cleanup failures.
-      }
+    try {
+      fs.unlinkSync(filePath)
+    } catch {
+      // Ignore cleanup failures.
     }
   }
 }
@@ -119,31 +117,31 @@ function getPlatform(): 'linux-x64' | 'win-x64' | 'osx-x64' {
   }
 }
 
-function getLocalClientMetadata(): StaticSiteClientLocalMetadata | null {
-  const metadataFilename = path.join(
+function getLocalClientMetadata(): StaticSiteClientLocalMetadata | undefined {
+  const metadataFilePath = path.join(
     DEPLOY_FOLDER,
     `${DEPLOY_BINARY_NAME}.json`
   )
-  if (!fs.existsSync(metadataFilename)) {
-    return null
+  if (!fs.existsSync(metadataFilePath)) {
+    return undefined
   }
 
   try {
     const metadata = JSON.parse(
-      fs.readFileSync(metadataFilename, 'utf8')
+      fs.readFileSync(metadataFilePath, 'utf8')
     ) as StaticSiteClientLocalMetadata
 
     if (fs.existsSync(metadata.binary)) {
       return metadata
     }
   } catch {
-    return null
+    return undefined
   }
 
-  return null
+  return undefined
 }
 
-async function fetchClientVersionDefinition(
+async function fetchReleaseMetadata(
   releaseVersion: string
 ): Promise<StaticSiteClientReleaseMetadata | undefined> {
   const cachedMetadata = releaseMetadataCache.get(releaseVersion)
@@ -208,7 +206,6 @@ async function downloadAndValidateBinary(
     binary: binaryPath,
     checksum
   }
-  await fs.promises.mkdir(DEPLOY_FOLDER, { recursive: true })
   await fs.promises.writeFile(
     path.join(DEPLOY_FOLDER, `${DEPLOY_BINARY_NAME}.json`),
     JSON.stringify(localMetadata, null, 2)
