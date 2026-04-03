@@ -37,8 +37,7 @@ export async function getDeployClientPath(
 ): Promise<{ binary: string; buildId: string }> {
   const platform = getPlatform()
   const localClientMetadata = getLocalClientMetadata()
-  const remoteClientMetadata =
-    await fetchReleaseMetadata(releaseVersion)
+  const remoteClientMetadata = await fetchReleaseMetadata(releaseVersion)
 
   if (!remoteClientMetadata) {
     throw new Error(
@@ -69,8 +68,7 @@ export async function getDeployCacheInfo(
   releaseVersion = DEPLOY_BINARY_STABLE_TAG
 ): Promise<StaticSiteClientCacheInfo | undefined> {
   const platform = getPlatform()
-  const remoteClientMetadata =
-    await fetchReleaseMetadata(releaseVersion)
+  const remoteClientMetadata = await fetchReleaseMetadata(releaseVersion)
 
   if (!remoteClientMetadata) {
     return undefined

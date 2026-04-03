@@ -173,9 +173,7 @@ function resolveOptionalDirectory(
 
   const resolvedLocation = path.resolve(workingDirectory, location)
   if (!fs.existsSync(resolvedLocation)) {
-    throw new Error(
-      `The ${kind} folder "${resolvedLocation}" does not exist.`
-    )
+    throw new Error(`The ${kind} folder "${resolvedLocation}" does not exist.`)
   }
 
   return toRepositoryRelativePath(workingDirectory, resolvedLocation)

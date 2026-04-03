@@ -55519,7 +55519,7 @@ const releaseMetadataCache = /* @__PURE__ */ new Map();
 async function getDeployClientPath(releaseVersion = DEPLOY_BINARY_STABLE_TAG) {
 	const platform = getPlatform();
 	const localClientMetadata = getLocalClientMetadata();
-	const remoteClientMetadata = await fetchClientVersionDefinition(releaseVersion);
+	const remoteClientMetadata = await fetchReleaseMetadata(releaseVersion);
 	if (!remoteClientMetadata) throw new Error("Could not load StaticSitesClient metadata from remote. Check network connectivity.");
 	if (localClientMetadata) {
 		const localFile = remoteClientMetadata.files[platform];
@@ -55535,7 +55535,7 @@ async function getDeployClientPath(releaseVersion = DEPLOY_BINARY_STABLE_TAG) {
 }
 async function getDeployCacheInfo(releaseVersion = DEPLOY_BINARY_STABLE_TAG) {
 	const platform = getPlatform();
-	const remoteClientMetadata = await fetchClientVersionDefinition(releaseVersion);
+	const remoteClientMetadata = await fetchReleaseMetadata(releaseVersion);
 	if (!remoteClientMetadata) return;
 	const release = remoteClientMetadata.files[platform];
 	return {
@@ -55552,7 +55552,7 @@ async function getDeployCacheInfo(releaseVersion = DEPLOY_BINARY_STABLE_TAG) {
 function cleanUp() {
 	for (const file of ["app.zip", "api.zip"]) {
 		const filePath = path.join(process.cwd(), file);
-		if (fs$1.existsSync(filePath)) try {
+		try {
 			fs$1.unlinkSync(filePath);
 		} catch {}
 	}
@@ -55567,17 +55567,16 @@ function getPlatform() {
 	}
 }
 function getLocalClientMetadata() {
-	const metadataFilename = path.join(DEPLOY_FOLDER, `${DEPLOY_BINARY_NAME}.json`);
-	if (!fs$1.existsSync(metadataFilename)) return null;
+	const metadataFilePath = path.join(DEPLOY_FOLDER, `${DEPLOY_BINARY_NAME}.json`);
+	if (!fs$1.existsSync(metadataFilePath)) return;
 	try {
-		const metadata = JSON.parse(fs$1.readFileSync(metadataFilename, "utf8"));
+		const metadata = JSON.parse(fs$1.readFileSync(metadataFilePath, "utf8"));
 		if (fs$1.existsSync(metadata.binary)) return metadata;
 	} catch {
-		return null;
+		return;
 	}
-	return null;
 }
-async function fetchClientVersionDefinition(releaseVersion) {
+async function fetchReleaseMetadata(releaseVersion) {
 	const cachedMetadata = releaseMetadataCache.get(releaseVersion);
 	if (cachedMetadata) return cachedMetadata;
 	const metadataPromise = (async () => {
@@ -55614,7 +55613,6 @@ async function downloadAndValidateBinary(metadata, platform) {
 		binary: binaryPath,
 		checksum
 	};
-	await fs$1.promises.mkdir(DEPLOY_FOLDER, { recursive: true });
 	await fs$1.promises.writeFile(path.join(DEPLOY_FOLDER, `${DEPLOY_BINARY_NAME}.json`), JSON.stringify(localMetadata, null, 2));
 	return binaryPath;
 }
@@ -55687,7 +55685,7 @@ async function saveStaticSiteClientCache() {
 const defaultDependencies = {
 	getDeployClientPath,
 	spawn,
-	cleanup: cleanUp,
+	cleanUp,
 	info,
 	warning,
 	debug
@@ -55755,7 +55753,7 @@ async function runDeployment(inputs, overrides = {}) {
 			]
 		}), dependencies) };
 	} finally {
-		dependencies.cleanup();
+		dependencies.cleanUp();
 	}
 }
 function getDefaultApiVersion(apiLanguage) {
@@ -55769,12 +55767,12 @@ function getDefaultApiVersion(apiLanguage) {
 function resolveOptionalDirectory(workingDirectory, location, kind) {
 	if (!location) return;
 	const resolvedLocation = path.resolve(workingDirectory, location);
-	if (!fs$1.existsSync(resolvedLocation)) throw new Error(`The provided ${kind} folder ${resolvedLocation} does not exist.`);
+	if (!fs$1.existsSync(resolvedLocation)) throw new Error(`The ${kind} folder "${resolvedLocation}" does not exist.`);
 	return toRepositoryRelativePath(workingDirectory, resolvedLocation);
 }
 function resolveConfigLocation(options) {
-	const configDirectory = [options.appLocation].find((candidate) => fs$1.existsSync(path.join(candidate, SWA_CONFIG_FILENAME)));
-	return configDirectory ? toRepositoryRelativePath(options.workingDirectory, configDirectory) : void 0;
+	if (!fs$1.existsSync(path.join(options.appLocation, SWA_CONFIG_FILENAME))) return;
+	return toRepositoryRelativePath(options.workingDirectory, options.appLocation);
 }
 function resolveRelativeDirectory(workingDirectory, location, kind) {
 	const absolutePath = path.resolve(workingDirectory, location);
@@ -55839,16 +55837,16 @@ function parseDeploymentUrl(line) {
 	return line.match(/https?:\/\/\S+/)?.[0];
 }
 function sanitizeLine(line) {
-	let sanitized = "";
+	const parts = [];
 	for (let index = 0; index < line.length; index += 1) {
 		if (line[index] === "\x1B" && line[index + 1] === "[") {
 			index += 2;
 			while (index < line.length && line[index] !== "m") index += 1;
 			continue;
 		}
-		sanitized += line[index];
+		parts.push(line[index]);
 	}
-	return sanitized.trim();
+	return parts.join("").trim();
 }
 function isFailureLine(line) {
 	return /(^error\b|deployment failed|cannot deploy)/i.test(line);
