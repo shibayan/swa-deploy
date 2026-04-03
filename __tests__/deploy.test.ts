@@ -96,9 +96,10 @@ describe('deploy.ts', () => {
     expect(spawn).toHaveBeenCalledTimes(1)
 
     const [, , options] = spawn.mock.calls[0]
-    expect(options.env.APP_LOCATION).toBe(appRoot)
+    expect(options.env.REPOSITORY_BASE).toBe(tempRoot)
+    expect(options.env.APP_LOCATION).toBe('dist')
     expect(options.env.OUTPUT_LOCATION).toBe('')
-    expect(options.env.API_LOCATION).toBe(apiRoot)
+    expect(options.env.API_LOCATION).toBe('api')
     expect(options.env.CONFIG_FILE_LOCATION).toBeUndefined()
     expect(options.env.DEPLOYMENT_ENVIRONMENT).toBe('preview')
     expect(options.env.FUNCTION_LANGUAGE_VERSION).toBe('22')
@@ -211,7 +212,7 @@ describe('deploy.ts', () => {
       'api_location is set but api_language is not. Deployment may fail unless platform.apiRuntime is defined in staticwebapp.config.json.'
     )
     const [, , options] = spawn.mock.calls[0]
-    expect(options.env.API_LOCATION).toBe(apiRoot)
+    expect(options.env.API_LOCATION).toBe('api')
     expect(options.env.FUNCTION_LANGUAGE_VERSION).toBeUndefined()
   })
 

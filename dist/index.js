@@ -55699,16 +55699,15 @@ async function runDeployment(inputs, overrides = {}) {
 		...overrides
 	};
 	const currentDirectory = process.cwd();
-	const appLocation = path.resolve(currentDirectory, inputs.appLocation ?? ".");
+	const appLocation = resolveRelativeDirectory(currentDirectory, inputs.appLocation ?? ".", "app_location");
 	const deploymentEnvironment = inputs.environment ?? "production";
-	if (!fs$1.existsSync(appLocation)) throw new Error(`The app_location folder "${appLocation}" does not exist.`);
-	dependencies.info(`Deploying front-end files from folder: ${appLocation}`);
+	dependencies.info(`Deploying front-end files from folder: ${appLocation.absolutePath}`);
 	let apiLocation;
 	if (inputs.apiLocation) {
 		apiLocation = resolveOptionalDirectory(currentDirectory, inputs.apiLocation, "API");
 		dependencies.info(`Deploying API from folder: ${apiLocation}`);
 	} else {
-		const apiFolder = await findApiFolderInPath(appLocation);
+		const apiFolder = await findApiFolderInPath(appLocation.absolutePath);
 		if (apiFolder) {
 			const detectedApiPath = `./${apiFolder}`;
 			dependencies.warning(`An API folder was found at "${detectedApiPath}" but api_location was not provided. The API will not be deployed.`);
@@ -55721,7 +55720,10 @@ async function runDeployment(inputs, overrides = {}) {
 	} else if (apiLocation && !inputs.apiLanguage) dependencies.warning("api_location is set but api_language is not. Deployment may fail unless platform.apiRuntime is defined in staticwebapp.config.json.");
 	const deploymentToken = inputs.deploymentToken ?? process.env.SWA_CLI_DEPLOYMENT_TOKEN;
 	if (!deploymentToken) throw new Error("A deployment token is required to deploy to Azure Static Web Apps");
-	const configLocation = resolveConfigLocation({ appLocation });
+	const configLocation = resolveConfigLocation({
+		appLocation: appLocation.absolutePath,
+		workingDirectory: currentDirectory
+	});
 	dependencies.info(`Deploying to environment: ${deploymentEnvironment}`);
 	dependencies.info("Deploying project to Azure Static Web Apps...");
 	const { binary, buildId } = await dependencies.getDeployClientPath();
@@ -55730,14 +55732,14 @@ async function runDeployment(inputs, overrides = {}) {
 		...process.env,
 		DEPLOYMENT_ACTION: "upload",
 		DEPLOYMENT_PROVIDER: "GitHubAction",
-		REPOSITORY_BASE: appLocation,
+		REPOSITORY_BASE: currentDirectory,
 		SKIP_APP_BUILD: "true",
 		SKIP_API_BUILD: "true",
 		DEPLOYMENT_TOKEN: deploymentToken,
-		APP_LOCATION: appLocation,
+		APP_LOCATION: appLocation.relativePath,
 		OUTPUT_LOCATION: "",
 		API_LOCATION: apiLocation,
-		CONFIG_FILE_LOCATION: configLocation && configLocation !== appLocation ? configLocation : void 0,
+		CONFIG_FILE_LOCATION: configLocation && configLocation !== appLocation.relativePath ? configLocation : void 0,
 		FUNCTION_LANGUAGE: inputs.apiLanguage,
 		FUNCTION_LANGUAGE_VERSION: apiVersion,
 		SWA_CLI_DEPLOY_BINARY: `${binary}@${buildId}`
@@ -55768,10 +55770,23 @@ function resolveOptionalDirectory(workingDirectory, location, kind) {
 	if (!location) return;
 	const resolvedLocation = path.resolve(workingDirectory, location);
 	if (!fs$1.existsSync(resolvedLocation)) throw new Error(`The provided ${kind} folder ${resolvedLocation} does not exist.`);
-	return resolvedLocation;
+	return toRepositoryRelativePath(workingDirectory, resolvedLocation);
 }
 function resolveConfigLocation(options) {
-	return [options.appLocation].find((candidate) => fs$1.existsSync(path.join(candidate, SWA_CONFIG_FILENAME)));
+	const configDirectory = [options.appLocation].find((candidate) => fs$1.existsSync(path.join(candidate, SWA_CONFIG_FILENAME)));
+	return configDirectory ? toRepositoryRelativePath(options.workingDirectory, configDirectory) : void 0;
+}
+function resolveRelativeDirectory(workingDirectory, location, kind) {
+	const absolutePath = path.resolve(workingDirectory, location);
+	if (!fs$1.existsSync(absolutePath)) throw new Error(`The ${kind} folder "${absolutePath}" does not exist.`);
+	return {
+		absolutePath,
+		relativePath: toRepositoryRelativePath(workingDirectory, absolutePath)
+	};
+}
+function toRepositoryRelativePath(workingDirectory, absolutePath) {
+	const relativePath = path.relative(workingDirectory, absolutePath);
+	return relativePath === "" ? "." : relativePath;
 }
 async function findApiFolderInPath(appPath) {
 	return (await fs$1.promises.readdir(appPath, { withFileTypes: true })).find((entry) => entry.name.toLowerCase() === "api" && entry.isDirectory())?.name;

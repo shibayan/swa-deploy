@@ -52,14 +52,16 @@ export async function runDeployment(
 ): Promise<DeployResult> {
   const dependencies = { ...defaultDependencies, ...overrides }
   const currentDirectory = process.cwd()
-  const appLocation = path.resolve(currentDirectory, inputs.appLocation ?? '.')
+  const appLocation = resolveRelativeDirectory(
+    currentDirectory,
+    inputs.appLocation ?? '.',
+    'app_location'
+  )
   const deploymentEnvironment = inputs.environment ?? 'production'
 
-  if (!fs.existsSync(appLocation)) {
-    throw new Error(`The app_location folder "${appLocation}" does not exist.`)
-  }
-
-  dependencies.info(`Deploying front-end files from folder: ${appLocation}`)
+  dependencies.info(
+    `Deploying front-end files from folder: ${appLocation.absolutePath}`
+  )
 
   let apiLocation: string | undefined
   if (inputs.apiLocation) {
@@ -70,7 +72,7 @@ export async function runDeployment(
     )
     dependencies.info(`Deploying API from folder: ${apiLocation}`)
   } else {
-    const apiFolder = await findApiFolderInPath(appLocation)
+    const apiFolder = await findApiFolderInPath(appLocation.absolutePath)
     if (apiFolder) {
       const detectedApiPath = `./${apiFolder}`
       dependencies.warning(
@@ -100,7 +102,8 @@ export async function runDeployment(
   }
 
   const configLocation = resolveConfigLocation({
-    appLocation
+    appLocation: appLocation.absolutePath,
+    workingDirectory: currentDirectory
   })
 
   dependencies.info(`Deploying to environment: ${deploymentEnvironment}`)
@@ -113,15 +116,15 @@ export async function runDeployment(
     ...process.env,
     DEPLOYMENT_ACTION: 'upload',
     DEPLOYMENT_PROVIDER: 'GitHubAction',
-    REPOSITORY_BASE: appLocation,
+    REPOSITORY_BASE: currentDirectory,
     SKIP_APP_BUILD: 'true',
     SKIP_API_BUILD: 'true',
     DEPLOYMENT_TOKEN: deploymentToken,
-    APP_LOCATION: appLocation,
+    APP_LOCATION: appLocation.relativePath,
     OUTPUT_LOCATION: '',
     API_LOCATION: apiLocation,
     CONFIG_FILE_LOCATION:
-      configLocation && configLocation !== appLocation
+      configLocation && configLocation !== appLocation.relativePath
         ? configLocation
         : undefined,
     FUNCTION_LANGUAGE: inputs.apiLanguage,
@@ -175,16 +178,45 @@ function resolveOptionalDirectory(
     )
   }
 
-  return resolvedLocation
+  return toRepositoryRelativePath(workingDirectory, resolvedLocation)
 }
 
 function resolveConfigLocation(options: {
   appLocation: string
+  workingDirectory: string
 }): string | undefined {
   const candidates = [options.appLocation]
-  return candidates.find((candidate) =>
+  const configDirectory = candidates.find((candidate) =>
     fs.existsSync(path.join(candidate, SWA_CONFIG_FILENAME))
   )
+
+  return configDirectory
+    ? toRepositoryRelativePath(options.workingDirectory, configDirectory)
+    : undefined
+}
+
+function resolveRelativeDirectory(
+  workingDirectory: string,
+  location: string,
+  kind: string
+): { absolutePath: string; relativePath: string } {
+  const absolutePath = path.resolve(workingDirectory, location)
+  if (!fs.existsSync(absolutePath)) {
+    throw new Error(`The ${kind} folder "${absolutePath}" does not exist.`)
+  }
+
+  return {
+    absolutePath,
+    relativePath: toRepositoryRelativePath(workingDirectory, absolutePath)
+  }
+}
+
+function toRepositoryRelativePath(
+  workingDirectory: string,
+  absolutePath: string
+): string {
+  const relativePath = path.relative(workingDirectory, absolutePath)
+  return relativePath === '' ? '.' : relativePath
 }
 
 async function findApiFolderInPath(
