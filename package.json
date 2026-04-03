@@ -1,7 +1,7 @@
 {
   "name": "swa-deploy",
   "description": "GitHub Action to deploy prebuilt assets to Azure Static Web Apps",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "author": "shibayan",
   "type": "module",
   "private": true,
@@ -40,7 +40,10 @@
   "license": "MIT",
   "dependencies": {
     "@actions/cache": "6.0.0",
-    "@actions/core": "3.0.0"
+    "@actions/core": "3.0.0",
+    "@azure/arm-appservice": "18.0.0",
+    "@azure/arm-resources-subscriptions": "2.1.0",
+    "@azure/identity": "4.13.1"
   },
   "devDependencies": {
     "@eslint/compat": "2.0.3",

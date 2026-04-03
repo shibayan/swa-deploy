@@ -20,16 +20,18 @@ export async function run(): Promise<void> {
     }
 
     const result = await runDeployment({
-      appLocation: getOptionalInput('app_location') ?? '.',
-      apiLocation: getOptionalInput('api_location'),
-      deploymentToken: getOptionalInput('deployment_token'),
-      environment: getOptionalInput('environment') ?? 'production',
-      apiLanguage: getOptionalInput('api_language'),
-      apiVersion: getOptionalInput('api_version')
+      appLocation: getOptionalInput('app-location') ?? '.',
+      apiLocation: getOptionalInput('api-location'),
+      deploymentToken: getOptionalInput('deployment-token'),
+      appName: getOptionalInput('app-name'),
+      resourceGroupName: getOptionalInput('resource-group-name'),
+      environment: getOptionalInput('environment'),
+      apiLanguage: getOptionalInput('api-language'),
+      apiVersion: getOptionalInput('api-version')
     })
 
     if (result.deploymentUrl) {
-      core.setOutput('deployment_url', result.deploymentUrl)
+      core.setOutput('deployment-url', result.deploymentUrl)
     }
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message)

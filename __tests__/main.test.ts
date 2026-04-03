@@ -23,7 +23,7 @@ describe('main.ts', () => {
   beforeEach(() => {
     core.getInput.mockImplementation((name: string) => {
       const inputs: Record<string, string> = {
-        app_location: 'dist',
+        'app-location': 'dist',
         environment: 'production'
       }
 
@@ -39,7 +39,7 @@ describe('main.ts', () => {
     jest.resetAllMocks()
   })
 
-  it('Sets the deployment_url output', async () => {
+  it('Sets the deployment-url output', async () => {
     await run()
 
     expect(cache.restoreStaticSiteClientCache).toHaveBeenCalledTimes(1)
@@ -47,13 +47,15 @@ describe('main.ts', () => {
       appLocation: 'dist',
       apiLocation: undefined,
       deploymentToken: undefined,
+      appName: undefined,
+      resourceGroupName: undefined,
       environment: 'production',
       apiLanguage: undefined,
       apiVersion: undefined
     })
     expect(core.setOutput).toHaveBeenNthCalledWith(
       1,
-      'deployment_url',
+      'deployment-url',
       'https://polite-wave-012345678.1.azurestaticapps.net'
     )
   })
@@ -95,12 +97,14 @@ describe('main.ts', () => {
   it('Uses defaults when optional inputs are blank', async () => {
     core.getInput.mockImplementation((name: string) => {
       const inputs: Record<string, string> = {
-        app_location: '   ',
-        api_location: '   ',
-        deployment_token: '   ',
+        'app-location': '   ',
+        'api-location': '   ',
+        'deployment-token': '   ',
+        'app-name': '   ',
+        'resource-group-name': '   ',
         environment: '   ',
-        api_language: '   ',
-        api_version: '   '
+        'api-language': '   ',
+        'api-version': '   '
       }
 
       return inputs[name] ?? ''
@@ -112,13 +116,15 @@ describe('main.ts', () => {
       appLocation: '.',
       apiLocation: undefined,
       deploymentToken: undefined,
-      environment: 'production',
+      appName: undefined,
+      resourceGroupName: undefined,
+      environment: undefined,
       apiLanguage: undefined,
       apiVersion: undefined
     })
   })
 
-  it('Does not set deployment_url when deployment does not return one', async () => {
+  it('Does not set deployment-url when deployment does not return one', async () => {
     runDeployment.mockResolvedValueOnce({})
 
     await run()

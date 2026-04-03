@@ -1,2 +1,3 @@
 [codespell]
 ignore-words-list = afterAll
+skip = package-lock.json

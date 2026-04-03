@@ -10,7 +10,8 @@ const config = defineConfig({
     esModule: true,
     file: 'dist/index.js',
     format: 'es',
-    sourcemap: true
+    sourcemap: true,
+    minify: true
   }
 })
 
