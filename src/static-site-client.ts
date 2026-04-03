@@ -1,9 +1,10 @@
 import crypto from 'node:crypto'
+import { once } from 'node:events'
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import { once } from 'node:events'
 import { Readable } from 'node:stream'
+import { finished } from 'node:stream/promises'
 import type { ReadableStream as WebReadableStream } from 'node:stream/web'
 
 const DEPLOY_BINARY_NAME = 'StaticSitesClient'
@@ -120,9 +121,6 @@ function getLocalClientMetadata(): StaticSiteClientLocalMetadata | undefined {
     DEPLOY_FOLDER,
     `${DEPLOY_BINARY_NAME}.json`
   )
-  if (!fs.existsSync(metadataFilePath)) {
-    return undefined
-  }
 
   try {
     const metadata = JSON.parse(
@@ -235,18 +233,12 @@ async function streamDownloadToFile(
       }
     }
 
-    await closeWriteStream(writeStream)
+    writeStream.end()
+    await finished(writeStream)
     return hash.digest('hex')
   } catch (error) {
     writeStream.destroy()
     await fs.promises.rm(destinationPath, { force: true })
     throw error
   }
-}
-
-async function closeWriteStream(writeStream: fs.WriteStream): Promise<void> {
-  await new Promise<void>((resolve, reject) => {
-    writeStream.on('error', reject)
-    writeStream.end(() => resolve())
-  })
 }

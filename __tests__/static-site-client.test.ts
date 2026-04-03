@@ -486,4 +486,156 @@ describe('static-site-client.ts', () => {
       'Unsupported platform: freebsd'
     )
   })
+
+  it('downloads the darwin client binary with chmod', async () => {
+    const binaryContent = Buffer.from('darwin-client-binary')
+    const checksum =
+      '746c92e9bc3257db5d4154f099beecad4a0973c5609d163d89ac9a7ece52bd33'
+    const remoteMetadata = {
+      version: 'darwin-download',
+      buildId: 'build-darwin',
+      files: {
+        'linux-x64': {
+          url: 'https://example.invalid/linux-client',
+          sha: checksum
+        },
+        'win-x64': {
+          url: 'https://example.invalid/win-client',
+          sha: checksum
+        },
+        'osx-x64': {
+          url: 'https://example.invalid/osx-client',
+          sha: checksum
+        }
+      }
+    }
+    const module = await importStaticSiteClientWithOs({
+      arch: () => 'x64',
+      platform: () => 'darwin'
+    })
+
+    jest
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async (input: string | URL | Request) => {
+        if (`${input}` === 'https://aka.ms/swalocaldeploy') {
+          return new Response(JSON.stringify([remoteMetadata]))
+        }
+
+        return new Response(binaryContent)
+      })
+
+    const result = await module.getDeployClientPath('darwin-download')
+
+    expect(result.binary).toBe(
+      path.join(tempHome, '.swa', 'deploy', 'build-darwin', 'StaticSitesClient')
+    )
+    await expect(fs.stat(result.binary)).resolves.toBeDefined()
+  })
+
+  it('cleans up and rethrows when the download stream fails mid-read', async () => {
+    const remoteMetadata = {
+      version: 'stream-error',
+      buildId: 'build-stream-error',
+      files: {
+        'linux-x64': {
+          url: 'https://example.invalid/linux-client',
+          sha: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+        },
+        'win-x64': {
+          url: 'https://example.invalid/win-client',
+          sha: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+        },
+        'osx-x64': {
+          url: 'https://example.invalid/osx-client',
+          sha: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+        }
+      }
+    }
+
+    jest
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async (input: string | URL | Request) => {
+        if (`${input}` === 'https://aka.ms/swalocaldeploy') {
+          return new Response(JSON.stringify([remoteMetadata]))
+        }
+
+        const stream = new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode('partial'))
+            controller.error(new Error('network interrupted'))
+          }
+        })
+
+        return new Response(stream)
+      })
+
+    await expect(getDeployClientPath('stream-error')).rejects.toThrow(
+      'network interrupted'
+    )
+
+    const binaryDir = path.join(
+      tempHome,
+      '.swa',
+      'deploy',
+      'build-stream-error'
+    )
+    const binaryName =
+      os.platform() === 'win32' ? 'StaticSitesClient.exe' : 'StaticSitesClient'
+    const exists = await fs
+      .stat(path.join(binaryDir, binaryName))
+      .then(() => true)
+      .catch(() => false)
+    expect(exists).toBe(false)
+  })
+
+  it('downloads the windows client binary with an exe extension', async () => {
+    const binaryContent = Buffer.from('windows-client-binary')
+    const checksum =
+      'ed2542ac02472ae1846f57005c81b3f2e55903cc15a0d10194c4cc5eb9cb0320'
+    const remoteMetadata = {
+      version: 'windows-download',
+      buildId: 'build-win',
+      files: {
+        'linux-x64': {
+          url: 'https://example.invalid/linux-client',
+          sha: checksum
+        },
+        'win-x64': {
+          url: 'https://example.invalid/win-client',
+          sha: checksum
+        },
+        'osx-x64': {
+          url: 'https://example.invalid/osx-client',
+          sha: checksum
+        }
+      }
+    }
+    const module = await importStaticSiteClientWithOs({
+      arch: () => 'x64',
+      platform: () => 'win32'
+    })
+
+    jest
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async (input: string | URL | Request) => {
+        if (`${input}` === 'https://aka.ms/swalocaldeploy') {
+          return new Response(JSON.stringify([remoteMetadata]))
+        }
+
+        return new Response(binaryContent)
+      })
+
+    const result = await module.getDeployClientPath('windows-download')
+
+    expect(result.binary).toBe(
+      path.join(
+        tempHome,
+        '.swa',
+        'deploy',
+        'build-win',
+        'StaticSitesClient.exe'
+      )
+    )
+    await expect(fs.stat(result.binary)).resolves.toBeDefined()
+  })
 })

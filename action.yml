@@ -10,33 +10,43 @@ branding:
 
 # Define your inputs here.
 inputs:
-  app_location:
+  app-location:
     description: Directory that contains the prebuilt front-end assets to deploy
     required: false
-  api_location:
+  api-location:
     description: Directory that contains the Azure Functions API to deploy
     required: false
-  deployment_token:
+  deployment-token:
     description:
       Deployment token for the target Static Web App. Falls back to
       SWA_CLI_DEPLOYMENT_TOKEN when omitted
+    required: false
+  app-name:
+    description:
+      Static Web App name used to resolve a deployment token from Azure Resource
+      Manager when deployment-token is omitted
+    required: false
+  resource-group-name:
+    description:
+      Resource group name for the target Static Web App. When provided, Azure
+      Resource Manager lookup skips subscription-wide app discovery.
     required: false
   environment:
     description: Target deployment environment such as preview or production
     required: false
     default: 'production'
-  api_language:
+  api-language:
     description:
       Function runtime language for the API, for example node, python, dotnet,
       or dotnetisolated
     required: false
-  api_version:
+  api-version:
     description: Function runtime version for the API
     required: false
 
 # Define your outputs here.
 outputs:
-  deployment_url:
+  deployment-url:
     description:
       URL emitted by StaticSitesClient after a successful deployment when
       available
