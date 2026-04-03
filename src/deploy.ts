@@ -118,7 +118,7 @@ export async function runDeployment(
     SKIP_API_BUILD: 'true',
     DEPLOYMENT_TOKEN: deploymentToken,
     APP_LOCATION: appLocation,
-    OUTPUT_LOCATION: appLocation,
+    OUTPUT_LOCATION: '',
     API_LOCATION: apiLocation,
     CONFIG_FILE_LOCATION:
       configLocation && configLocation !== appLocation

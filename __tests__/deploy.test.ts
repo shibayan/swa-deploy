@@ -97,7 +97,7 @@ describe('deploy.ts', () => {
 
     const [, , options] = spawn.mock.calls[0]
     expect(options.env.APP_LOCATION).toBe(appRoot)
-    expect(options.env.OUTPUT_LOCATION).toBe(appRoot)
+    expect(options.env.OUTPUT_LOCATION).toBe('')
     expect(options.env.API_LOCATION).toBe(apiRoot)
     expect(options.env.CONFIG_FILE_LOCATION).toBeUndefined()
     expect(options.env.DEPLOYMENT_ENVIRONMENT).toBe('preview')
