@@ -118,12 +118,13 @@ export async function runDeployment(
     )
   }
 
-  const deploymentToken = await resolveDeploymentToken(inputs, dependencies)
-
   dependencies.info(`Deploying to environment: ${deploymentEnvironment}`)
   dependencies.info('Deploying project to Azure Static Web Apps...')
 
-  const { binary, buildId } = await dependencies.getDeployClientPath()
+  const [deploymentToken, { binary, buildId }] = await Promise.all([
+    resolveDeploymentToken(inputs, dependencies),
+    dependencies.getDeployClientPath()
+  ])
   dependencies.debug(`Using StaticSitesClient ${binary}@${buildId}`)
 
   const env: NodeJS.ProcessEnv = {
@@ -300,28 +301,35 @@ async function resolveStaticWebAppLocation(
     )
   }
 
-  const matches: Array<StaticWebAppLocation & { displayName?: string }> = []
+  const results = await Promise.all(
+    subscriptions.map(async (subscription) => {
+      const staticSitesClient = dependencies.createStaticSitesClient(
+        subscription.subscriptionId
+      )
+      const resourceGroupName = await findStaticWebAppResourceGroup(
+        inputs.appName as string,
+        inputs.resourceGroupName,
+        subscription.subscriptionId,
+        staticSitesClient,
+        dependencies
+      )
 
-  for (const subscription of subscriptions) {
-    const staticSitesClient = dependencies.createStaticSitesClient(
-      subscription.subscriptionId
-    )
-    const resourceGroupName = await findStaticWebAppResourceGroup(
-      inputs.appName as string,
-      inputs.resourceGroupName,
-      subscription.subscriptionId,
-      staticSitesClient,
-      dependencies
-    )
+      if (resourceGroupName) {
+        return {
+          subscriptionId: subscription.subscriptionId,
+          resourceGroupName,
+          displayName: subscription.displayName
+        }
+      }
 
-    if (resourceGroupName) {
-      matches.push({
-        subscriptionId: subscription.subscriptionId,
-        resourceGroupName,
-        displayName: subscription.displayName
-      })
-    }
-  }
+      return undefined
+    })
+  )
+
+  const matches = results.filter(
+    (result): result is StaticWebAppLocation & { displayName?: string } =>
+      result !== undefined
+  )
 
   if (matches.length === 0) {
     throw new Error(
