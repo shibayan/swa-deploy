@@ -75,10 +75,10 @@ jobs:
         id: deploy
         uses: shibayan/swa-deploy@v1
         with:
-            app-location: dist
-            deployment-token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          app-location: dist
+          deployment-token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
 
-          - run: echo "${{ steps.deploy.outputs.deployment-url }}"
+      - run: echo "${{ steps.deploy.outputs.deployment-url }}"
 ```
 
 ### Deploy with an API

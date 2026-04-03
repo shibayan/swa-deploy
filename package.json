@@ -1,7 +1,7 @@
 {
   "name": "swa-deploy",
   "description": "GitHub Action to deploy prebuilt assets to Azure Static Web Apps",
-  "version": "1.2.0",
+  "version": "1.1.0",
   "author": "shibayan",
   "type": "module",
   "private": true,
