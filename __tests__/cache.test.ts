@@ -186,4 +186,21 @@ describe('cache.ts', () => {
       'StaticSitesClient cache saved with the key: swa-deploy-static-sites-client-linux-x64-build-sha'
     )
   })
+
+  it('does not save cache when storedPaths state is empty', async () => {
+    core.getState.mockImplementation((name: string) => {
+      const values: Record<string, string> = {
+        [CacheState.PrimaryKey]:
+          'swa-deploy-static-sites-client-linux-x64-build-sha',
+        [CacheState.MatchedKey]: '',
+        [CacheState.Paths]: ''
+      }
+
+      return values[name] ?? ''
+    })
+
+    await saveStaticSiteClientCache()
+
+    expect(toolkitCache.saveCache).not.toHaveBeenCalled()
+  })
 })

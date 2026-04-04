@@ -50,6 +50,7 @@ describe('deploy.ts', () => {
       spawn: jest.fn(),
       createStaticSitesClient: jest.fn().mockReturnValue({
         list: jest.fn(() => createAsyncIterable([])),
+        getStaticSite: jest.fn(),
         listStaticSitesByResourceGroup: jest.fn(() => createAsyncIterable([])),
         listStaticSiteSecrets: jest.fn()
       }),
@@ -205,20 +206,16 @@ describe('deploy.ts', () => {
     const appRoot = path.join(tempRoot, 'dist')
     const deployChild = new MockChildProcess()
     const list = jest.fn(() => createAsyncIterable([]))
-    const listStaticSitesByResourceGroup = jest.fn(() =>
-      createAsyncIterable([
-        {
-          id: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-resource-group/providers/Microsoft.Web/staticSites/my-static-app',
-          name: 'my-static-app'
-        }
-      ])
-    )
+    const getStaticSite = jest.fn().mockResolvedValue({
+      id: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-resource-group/providers/Microsoft.Web/staticSites/my-static-app',
+      name: 'my-static-app'
+    })
     const listStaticSiteSecrets = jest
       .fn()
       .mockResolvedValue({ properties: { apiKey: 'resolved-token' } })
     const createStaticSitesClient = jest.fn().mockReturnValue({
       list,
-      listStaticSitesByResourceGroup,
+      getStaticSite,
       listStaticSiteSecrets
     })
     const listSubscriptions = jest.fn().mockResolvedValue([
@@ -255,8 +252,9 @@ describe('deploy.ts', () => {
     )
 
     expect(list).not.toHaveBeenCalled()
-    expect(listStaticSitesByResourceGroup).toHaveBeenCalledWith(
-      'my-resource-group'
+    expect(getStaticSite).toHaveBeenCalledWith(
+      'my-resource-group',
+      'my-static-app'
     )
     expect(listStaticSiteSecrets).toHaveBeenCalledWith(
       'my-resource-group',
@@ -948,9 +946,9 @@ describe('deploy.ts', () => {
     const appRoot = path.join(tempRoot, 'dist')
     const createStaticSitesClient = jest.fn().mockReturnValue({
       list: jest.fn(() => createAsyncIterable([])),
-      listStaticSitesByResourceGroup: jest.fn(() =>
-        createFailingAsyncIterable({ code: 'ResourceGroupNotFound' })
-      ),
+      getStaticSite: jest
+        .fn()
+        .mockRejectedValue({ code: 'ResourceGroupNotFound' }),
       listStaticSiteSecrets: jest.fn()
     })
 
@@ -983,14 +981,10 @@ describe('deploy.ts', () => {
     const appRoot = path.join(tempRoot, 'dist')
     const createStaticSitesClient = jest.fn().mockReturnValue({
       list: jest.fn(() => createAsyncIterable([])),
-      listStaticSitesByResourceGroup: jest.fn(() =>
-        createAsyncIterable([
-          {
-            id: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-resource-group/providers/Microsoft.Web/staticSites/my-static-app',
-            name: 'my-static-app'
-          }
-        ])
-      ),
+      getStaticSite: jest.fn().mockResolvedValue({
+        id: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-resource-group/providers/Microsoft.Web/staticSites/my-static-app',
+        name: 'my-static-app'
+      }),
       listStaticSiteSecrets: jest.fn().mockRejectedValue({})
     })
 
@@ -1023,14 +1017,10 @@ describe('deploy.ts', () => {
     const appRoot = path.join(tempRoot, 'dist')
     const createStaticSitesClient = jest.fn().mockReturnValue({
       list: jest.fn(() => createAsyncIterable([])),
-      listStaticSitesByResourceGroup: jest.fn(() =>
-        createAsyncIterable([
-          {
-            id: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-resource-group/providers/Microsoft.Web/staticSites/my-static-app',
-            name: 'my-static-app'
-          }
-        ])
-      ),
+      getStaticSite: jest.fn().mockResolvedValue({
+        id: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-resource-group/providers/Microsoft.Web/staticSites/my-static-app',
+        name: 'my-static-app'
+      }),
       listStaticSiteSecrets: jest
         .fn()
         .mockResolvedValue({ properties: { apiKey: '   ' } })
@@ -1061,13 +1051,11 @@ describe('deploy.ts', () => {
     )
   })
 
-  it('throws when listStaticSitesByResourceGroup fails with a non-NotFound error', async () => {
+  it('throws when getStaticSite fails with a non-NotFound error', async () => {
     const appRoot = path.join(tempRoot, 'dist')
     const createStaticSitesClient = jest.fn().mockReturnValue({
       list: jest.fn(() => createAsyncIterable([])),
-      listStaticSitesByResourceGroup: jest.fn(() =>
-        createFailingAsyncIterable(new Error('Forbidden'))
-      ),
+      getStaticSite: jest.fn().mockRejectedValue(new Error('Forbidden')),
       listStaticSiteSecrets: jest.fn()
     })
 
@@ -1234,14 +1222,10 @@ describe('deploy.ts', () => {
     const appRoot = path.join(tempRoot, 'dist')
     const createStaticSitesClient = jest.fn().mockReturnValue({
       list: jest.fn(() => createAsyncIterable([])),
-      listStaticSitesByResourceGroup: jest.fn(() =>
-        createAsyncIterable([
-          {
-            id: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-resource-group/providers/Microsoft.Web/staticSites/my-static-app',
-            name: 'my-static-app'
-          }
-        ])
-      ),
+      getStaticSite: jest.fn().mockResolvedValue({
+        id: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-resource-group/providers/Microsoft.Web/staticSites/my-static-app',
+        name: 'my-static-app'
+      }),
       listStaticSiteSecrets: jest
         .fn()
         .mockResolvedValue({ properties: { apiKey: 42 } })
@@ -1269,6 +1253,237 @@ describe('deploy.ts', () => {
       )
     ).rejects.toThrow(
       'Azure Resource Manager resolved successfully, but no deployment token was returned. Verify app-name.'
+    )
+  })
+
+  it('skips empty lines after ANSI stripping in stderr', async () => {
+    const appRoot = path.join(tempRoot, 'dist')
+    const child = new MockChildProcess()
+
+    await fs.mkdir(appRoot, { recursive: true })
+
+    const spawn = jest.fn(() => {
+      queueMicrotask(() => {
+        child.stderr?.write('\u001b[31m\u001b[0m\n')
+        child.stderr?.write('real warning\n')
+        child.stdout?.end()
+        child.stderr?.end()
+        child.emit('close', 0)
+      })
+
+      return child as ChildProcessWithoutNullStreams
+    })
+
+    await runDeployment(
+      {
+        appLocation: 'dist',
+        deploymentToken: 'test-token'
+      },
+      {
+        ...dependencies,
+        spawn
+      }
+    )
+
+    expect(dependencies.warning).not.toHaveBeenCalledWith('')
+    expect(dependencies.warning).toHaveBeenCalledWith('real warning')
+  })
+
+  it('uses unknown exit code message when the child process exits with null', async () => {
+    const appRoot = path.join(tempRoot, 'dist')
+    const child = new MockChildProcess()
+
+    await fs.mkdir(appRoot, { recursive: true })
+
+    const spawn = jest.fn(() => {
+      queueMicrotask(() => {
+        child.stdout?.end()
+        child.stderr?.end()
+        child.emit('close', null)
+      })
+
+      return child as ChildProcessWithoutNullStreams
+    })
+
+    await expect(
+      runDeployment(
+        {
+          appLocation: 'dist',
+          deploymentToken: 'test-token'
+        },
+        {
+          ...dependencies,
+          spawn
+        }
+      )
+    ).rejects.toThrow('StaticSitesClient exited with code unknown.')
+  })
+
+  it('formats subscription IDs without display names in multi-match error', async () => {
+    const appRoot = path.join(tempRoot, 'dist')
+    const createStaticSitesClient = jest.fn().mockReturnValue({
+      list: jest.fn(() =>
+        createAsyncIterable([
+          {
+            id: '/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/my-resource-group/providers/Microsoft.Web/staticSites/my-static-app',
+            name: 'my-static-app'
+          }
+        ])
+      ),
+      listStaticSiteSecrets: jest.fn()
+    })
+
+    await fs.mkdir(appRoot, { recursive: true })
+
+    await expect(
+      runDeployment(
+        {
+          appLocation: 'dist',
+          appName: 'my-static-app'
+        },
+        {
+          ...dependencies,
+          listSubscriptions: jest.fn().mockResolvedValue([
+            {
+              subscriptionId: '11111111-1111-1111-1111-111111111111'
+            },
+            {
+              subscriptionId: '22222222-2222-2222-2222-222222222222'
+            }
+          ]),
+          createStaticSitesClient
+        }
+      )
+    ).rejects.toThrow(
+      '11111111-1111-1111-1111-111111111111, 22222222-2222-2222-2222-222222222222'
+    )
+  })
+
+  it('ignores non-matching resources during resource group resolution', async () => {
+    const appRoot = path.join(tempRoot, 'dist')
+    const deployChild = new MockChildProcess()
+    const list = jest.fn(() =>
+      createAsyncIterable([
+        {
+          id: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/other-group/providers/Microsoft.Web/staticSites/other-app',
+          name: 'other-app'
+        },
+        {
+          id: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-resource-group/providers/Microsoft.Web/staticSites/my-static-app',
+          name: 'my-static-app'
+        }
+      ])
+    )
+    const listStaticSiteSecrets = jest
+      .fn()
+      .mockResolvedValue({ properties: { apiKey: 'resolved-token' } })
+    const createStaticSitesClient = jest.fn().mockReturnValue({
+      list,
+      listStaticSiteSecrets
+    })
+
+    await fs.mkdir(appRoot, { recursive: true })
+
+    const spawn = jest.fn().mockImplementationOnce(() => {
+      queueMicrotask(() => {
+        deployChild.stdout?.end()
+        deployChild.stderr?.end()
+        deployChild.emit('close', 0)
+      })
+
+      return deployChild as ChildProcessWithoutNullStreams
+    })
+
+    await runDeployment(
+      {
+        appLocation: 'dist',
+        appName: 'my-static-app'
+      },
+      {
+        ...dependencies,
+        listSubscriptions: jest.fn().mockResolvedValue([
+          {
+            subscriptionId: '00000000-0000-0000-0000-000000000000',
+            displayName: 'Subscription One'
+          }
+        ]),
+        createStaticSitesClient,
+        spawn
+      }
+    )
+
+    expect(listStaticSiteSecrets).toHaveBeenCalledWith(
+      'my-resource-group',
+      'my-static-app'
+    )
+  })
+
+  it('treats getStaticSite rejecting with null as an unrecoverable error', async () => {
+    const appRoot = path.join(tempRoot, 'dist')
+    const createStaticSitesClient = jest.fn().mockReturnValue({
+      list: jest.fn(() => createAsyncIterable([])),
+      getStaticSite: jest.fn().mockRejectedValue(null),
+      listStaticSiteSecrets: jest.fn()
+    })
+
+    await fs.mkdir(appRoot, { recursive: true })
+
+    await expect(
+      runDeployment(
+        {
+          appLocation: 'dist',
+          appName: 'my-static-app',
+          resourceGroupName: 'my-resource-group'
+        },
+        {
+          ...dependencies,
+          listSubscriptions: jest.fn().mockResolvedValue([
+            {
+              subscriptionId: '00000000-0000-0000-0000-000000000000',
+              displayName: 'Subscription One'
+            }
+          ]),
+          createStaticSitesClient
+        }
+      )
+    ).rejects.toThrow(
+      'Azure Resource Manager failed to resolve the Static Web App.'
+    )
+  })
+
+  it('uses the fallback message when deployment token resolution throws an object with empty message', async () => {
+    const appRoot = path.join(tempRoot, 'dist')
+    const createStaticSitesClient = jest.fn().mockReturnValue({
+      list: jest.fn(() => createAsyncIterable([])),
+      getStaticSite: jest.fn().mockResolvedValue({
+        id: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-resource-group/providers/Microsoft.Web/staticSites/my-static-app',
+        name: 'my-static-app'
+      }),
+      listStaticSiteSecrets: jest.fn().mockRejectedValue({ message: '   ' })
+    })
+
+    await fs.mkdir(appRoot, { recursive: true })
+
+    await expect(
+      runDeployment(
+        {
+          appLocation: 'dist',
+          appName: 'my-static-app',
+          resourceGroupName: 'my-resource-group'
+        },
+        {
+          ...dependencies,
+          listSubscriptions: jest.fn().mockResolvedValue([
+            {
+              subscriptionId: '00000000-0000-0000-0000-000000000000',
+              displayName: 'Subscription One'
+            }
+          ]),
+          createStaticSitesClient
+        }
+      )
+    ).rejects.toThrow(
+      'Azure Resource Manager failed to resolve the deployment token.'
     )
   })
 

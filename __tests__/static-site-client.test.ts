@@ -1,4 +1,5 @@
 import { afterAll as afterAllHook, jest } from '@jest/globals'
+import * as core from '@actions/core'
 import * as fs from 'node:fs/promises'
 import * as os from 'node:os'
 import * as path from 'node:path'
@@ -8,6 +9,25 @@ describe('static-site-client.ts', () => {
   let cleanUp: typeof import('../src/static-site-client.js').cleanUp
   let getDeployCacheInfo: typeof import('../src/static-site-client.js').getDeployCacheInfo
   let getDeployClientPath: typeof import('../src/static-site-client.js').getDeployClientPath
+
+  function buildPlatformMock(options: {
+    arch?: string
+    platform?: NodeJS.Platform
+  }) {
+    const p = options.platform ?? (os.platform() as NodeJS.Platform)
+    const a = options.arch ?? os.arch()
+    return {
+      ...core,
+      platform: {
+        platform: p,
+        arch: a,
+        isLinux: p === 'linux',
+        isMacOS: p === 'darwin',
+        isWindows: p === 'win32',
+        getDetails: core.platform.getDetails
+      }
+    }
+  }
 
   async function importStaticSiteClientWithOs(
     options: {
@@ -22,6 +42,12 @@ describe('static-site-client.ts', () => {
       arch: options.arch ?? os.arch,
       platform: options.platform ?? os.platform
     }))
+    jest.unstable_mockModule('@actions/core', () =>
+      buildPlatformMock({
+        arch: options.arch?.(),
+        platform: options.platform?.()
+      })
+    )
 
     return import('../src/static-site-client.js')
   }

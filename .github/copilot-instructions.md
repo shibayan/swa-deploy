@@ -25,7 +25,6 @@ it is generated from.
 | `.env.example`       | Environment Variables Example for `@github/local-action` |
 | `.licensed.yml`      | Licensed Configuration                                   |
 | `.markdown-lint.yml` | Markdown Linter Configuration                            |
-| `.node-version`      | Node.js Version Configuration                            |
 | `.prettierrc.yml`    | Prettier Formatter Configuration                         |
 | `.yaml-lint.yml`     | YAML Linter Configuration                                |
 | `action.yml`         | GitHub Action Metadata                                   |

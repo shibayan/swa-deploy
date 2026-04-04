@@ -42,7 +42,7 @@ interface DeploymentDependencies {
 
 type StaticSitesOperations = Pick<
   WebSiteManagementClient['staticSites'],
-  'list' | 'listStaticSiteSecrets' | 'listStaticSitesByResourceGroup'
+  'list' | 'getStaticSite' | 'listStaticSiteSecrets'
 >
 
 interface AzureSubscription {
@@ -90,11 +90,11 @@ export async function runDeployment(
 
   let apiLocation: string | undefined
   if (inputs.apiLocation) {
-    apiLocation = resolveOptionalDirectory(
+    apiLocation = resolveDirectory(
       currentDirectory,
       inputs.apiLocation,
       'API'
-    )
+    ).relativePath
     dependencies.info(`Deploying API from folder: ${apiLocation}`)
   } else {
     const apiFolder = await findApiFolderInPath(appLocation.absolutePath)
@@ -171,18 +171,6 @@ export function getDefaultApiVersion(apiLanguage: string): string {
     default:
       return '22'
   }
-}
-
-function resolveOptionalDirectory(
-  workingDirectory: string,
-  location: string | undefined,
-  kind: string
-): string | undefined {
-  if (!location) {
-    return undefined
-  }
-
-  return resolveDirectory(workingDirectory, location, kind).relativePath
 }
 
 function resolveDirectory(
@@ -327,8 +315,11 @@ async function resolveStaticWebAppLocation(
   )
 
   const matches = results.filter(
-    (result): result is StaticWebAppLocation & { displayName?: string } =>
-      result !== undefined
+    (
+      result
+    ): result is StaticWebAppLocation & {
+      displayName: string | undefined
+    } => result !== undefined
   )
 
   if (matches.length === 0) {
@@ -351,7 +342,8 @@ async function resolveStaticWebAppLocation(
     )
   }
 
-  return matches[0]
+  // Length is guaranteed to be exactly 1 after the above checks
+  return matches[0]!
 }
 
 async function findStaticWebAppResourceGroup(
@@ -367,15 +359,8 @@ async function findStaticWebAppResourceGroup(
     )
 
     try {
-      for await (const resource of staticSitesClient.listStaticSitesByResourceGroup(
-        resourceGroupName
-      )) {
-        if (resource.name?.toLowerCase() === staticWebAppName.toLowerCase()) {
-          return resourceGroupName
-        }
-      }
-
-      return undefined
+      await staticSitesClient.getStaticSite(resourceGroupName, staticWebAppName)
+      return resourceGroupName
     } catch (error) {
       if (isAzureNotFoundError(error)) {
         return undefined
@@ -550,7 +535,7 @@ function sanitizeLine(line: string): string {
   return line.replace(ANSI_ESCAPE_PATTERN, '').trim()
 }
 
-const FAILURE_PATTERN = /(^error\b|deployment failed|cannot deploy)/i
+const FAILURE_PATTERN = /(\berror\b|deployment failed|cannot deploy)/i
 
 function isFailureLine(line: string): boolean {
   return FAILURE_PATTERN.test(line)
@@ -570,16 +555,25 @@ function extractResourceGroupName(resourceId?: string): string | undefined {
   return match?.[1]
 }
 
+let sharedCredential: AzureCliCredential | undefined
+
+function getSharedCredential(): AzureCliCredential {
+  if (!sharedCredential) {
+    sharedCredential = new AzureCliCredential()
+  }
+  return sharedCredential
+}
+
 function createStaticSitesClient(
   subscriptionId: string
 ): StaticSitesOperations {
-  const credential = new AzureCliCredential()
+  const credential = getSharedCredential()
   const client = new WebSiteManagementClient(credential, subscriptionId)
   return client.staticSites
 }
 
 async function listSubscriptions(): Promise<AzureSubscription[]> {
-  const client = new SubscriptionClient(new AzureCliCredential())
+  const client = new SubscriptionClient(getSharedCredential())
   const subscriptions: AzureSubscription[] = []
   try {
     for await (const subscription of client.subscriptions.list()) {
@@ -617,6 +611,13 @@ function extractDeploymentToken(payload: {
 function getAzureErrorMessage(error: unknown, fallbackMessage: string): string {
   if (error instanceof Error && error.message.trim()) {
     return error.message
+  }
+
+  if (typeof error === 'object' && error !== null) {
+    const maybeError = error as { message?: unknown }
+    if (typeof maybeError.message === 'string' && maybeError.message.trim()) {
+      return maybeError.message
+    }
   }
 
   return fallbackMessage

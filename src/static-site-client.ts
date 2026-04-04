@@ -6,6 +6,7 @@ import * as path from 'node:path'
 import { Readable } from 'node:stream'
 import { finished } from 'node:stream/promises'
 import type { ReadableStream as WebReadableStream } from 'node:stream/web'
+import { platform } from '@actions/core'
 
 const DEPLOY_BINARY_NAME = 'StaticSitesClient'
 const DEPLOY_BINARY_STABLE_TAG = 'stable'
@@ -28,7 +29,7 @@ interface StaticSiteClientLocalMetadata {
   checksum: string
 }
 
-export interface StaticSiteClientCacheInfo {
+interface StaticSiteClientCacheInfo {
   primaryKey: string
   paths: string[]
 }
@@ -100,20 +101,19 @@ export function cleanUp(): void {
 }
 
 function getPlatform(): 'linux-x64' | 'win-x64' | 'osx-x64' {
-  if (os.arch() !== 'x64') {
-    throw new Error(`Unsupported architecture: ${os.arch()}`)
+  if (platform.arch !== 'x64') {
+    throw new Error(`Unsupported architecture: ${platform.arch}`)
   }
 
-  switch (os.platform()) {
-    case 'linux':
-      return 'linux-x64'
-    case 'win32':
-      return 'win-x64'
-    case 'darwin':
-      return 'osx-x64'
-    default:
-      throw new Error(`Unsupported platform: ${os.platform()}`)
+  if (platform.isLinux) {
+    return 'linux-x64'
+  } else if (platform.isWindows) {
+    return 'win-x64'
+  } else if (platform.isMacOS) {
+    return 'osx-x64'
   }
+
+  throw new Error(`Unsupported platform: ${platform.platform}`)
 }
 
 function getLocalClientMetadata(): StaticSiteClientLocalMetadata | undefined {
