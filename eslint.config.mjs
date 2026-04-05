@@ -40,6 +40,8 @@ export default [
           allowDefaultProject: [
             '__fixtures__/*.ts',
             '__tests__/*.ts',
+            '__tests__/deploy/*.ts',
+            '__tests__/static-site-client/*.ts',
             'eslint.config.mjs',
             'jest.config.js',
             'rolldown.config.ts'

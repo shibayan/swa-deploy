@@ -56,6 +56,7 @@ describe('deploy.ts', () => {
       }),
       listSubscriptions: jest.fn().mockResolvedValue([]),
       cleanUp: jest.fn(),
+      setSecret: jest.fn(),
       info: jest.fn(),
       warning: jest.fn(),
       debug: jest.fn()
@@ -103,6 +104,7 @@ describe('deploy.ts', () => {
       {
         spawn,
         cleanUp: dependencies.cleanUp,
+        setSecret: dependencies.setSecret,
         getDeployClientPath: dependencies.getDeployClientPath,
         info: dependencies.info,
         warning: dependencies.warning,
@@ -554,6 +556,75 @@ describe('deploy.ts', () => {
     const [, , options] = spawn.mock.calls[0]
     expect(options.env.API_LOCATION).toBe('api')
     expect(options.env.FUNCTION_LANGUAGE_VERSION).toBeUndefined()
+  })
+
+  it('warns when api-language is not a recognized runtime', async () => {
+    const appRoot = path.join(tempRoot, 'dist')
+    const apiRoot = path.join(tempRoot, 'api')
+    const child = new MockChildProcess()
+
+    await fs.mkdir(appRoot, { recursive: true })
+    await fs.mkdir(apiRoot, { recursive: true })
+
+    const spawn = jest.fn(() => {
+      queueMicrotask(() => {
+        child.stdout?.end()
+        child.stderr?.end()
+        child.emit('close', 0)
+      })
+
+      return child as ChildProcessWithoutNullStreams
+    })
+
+    await runDeployment(
+      {
+        appLocation: 'dist',
+        apiLocation: 'api',
+        apiLanguage: 'ruby',
+        deploymentToken: 'test-token'
+      },
+      {
+        ...dependencies,
+        spawn
+      }
+    )
+
+    expect(dependencies.warning).toHaveBeenCalledWith(
+      'api-language "ruby" is not a recognized runtime. Provide api-version explicitly.'
+    )
+    const [, , options] = spawn.mock.calls[0]
+    expect(options.env.FUNCTION_LANGUAGE).toBe('ruby')
+    expect(options.env.FUNCTION_LANGUAGE_VERSION).toBeUndefined()
+  })
+
+  it('masks the deployment token with setSecret', async () => {
+    const appRoot = path.join(tempRoot, 'dist')
+    const child = new MockChildProcess()
+
+    await fs.mkdir(appRoot, { recursive: true })
+
+    const spawn = jest.fn(() => {
+      queueMicrotask(() => {
+        child.stdout?.end()
+        child.stderr?.end()
+        child.emit('close', 0)
+      })
+
+      return child as ChildProcessWithoutNullStreams
+    })
+
+    await runDeployment(
+      {
+        appLocation: 'dist',
+        deploymentToken: 'secret-token'
+      },
+      {
+        ...dependencies,
+        spawn
+      }
+    )
+
+    expect(dependencies.setSecret).toHaveBeenCalledWith('secret-token')
   })
 
   it('surfaces deploy client failure output', async () => {
@@ -1492,5 +1563,6 @@ describe('deploy.ts', () => {
     expect(getDefaultApiVersion('python')).toBe('3.11')
     expect(getDefaultApiVersion('dotnet')).toBe('8.0')
     expect(getDefaultApiVersion('dotnetisolated')).toBe('8.0')
+    expect(getDefaultApiVersion('unknown-lang')).toBeUndefined()
   })
 })
