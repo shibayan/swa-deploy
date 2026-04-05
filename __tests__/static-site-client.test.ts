@@ -1,5 +1,6 @@
 import { afterAll as afterAllHook, jest } from '@jest/globals'
 import * as core from '@actions/core'
+import * as nodeFs from 'node:fs'
 import * as fs from 'node:fs/promises'
 import * as os from 'node:os'
 import * as path from 'node:path'
@@ -33,9 +34,20 @@ describe('static-site-client.ts', () => {
     options: {
       arch?: () => string
       platform?: () => NodeJS.Platform
+      writeStreamHighWaterMark?: number
     } = {}
   ) {
     jest.resetModules()
+    jest.unstable_mockModule('node:fs', () => ({
+      ...nodeFs,
+      createWriteStream:
+        options.writeStreamHighWaterMark === undefined
+          ? nodeFs.createWriteStream
+          : (filePath: nodeFs.PathLike) =>
+              nodeFs.createWriteStream(filePath, {
+                highWaterMark: options.writeStreamHighWaterMark
+              })
+    }))
     jest.unstable_mockModule('node:os', () => ({
       ...os,
       homedir: () => tempHome,
@@ -177,6 +189,129 @@ describe('static-site-client.ts', () => {
     expect(writtenBinary.equals(binaryContent)).toBe(true)
     expect(writtenMetadata.binary).toBe(result.binary)
     expect(writtenMetadata.checksum).toBe(checksum)
+  })
+
+  it('uses the default stable release on linux when local metadata matches', async () => {
+    const deployFolder = path.join(tempHome, '.swa', 'deploy')
+    const binaryPath = path.join(
+      deployFolder,
+      'build-linux-stable',
+      'StaticSitesClient'
+    )
+    const checksum =
+      'abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd'
+    const remoteMetadata = {
+      version: 'stable',
+      buildId: 'build-linux-stable',
+      files: {
+        'linux-x64': {
+          url: 'https://example.invalid/linux-client',
+          sha: checksum
+        },
+        'win-x64': {
+          url: 'https://example.invalid/win-client',
+          sha: checksum
+        },
+        'osx-x64': {
+          url: 'https://example.invalid/osx-client',
+          sha: checksum
+        }
+      }
+    }
+    const module = await importStaticSiteClientWithOs({
+      arch: () => 'x64',
+      platform: () => 'linux'
+    })
+
+    await fs.mkdir(path.dirname(binaryPath), { recursive: true })
+    await fs.writeFile(binaryPath, 'linux-client')
+    await fs.writeFile(
+      path.join(deployFolder, 'StaticSitesClient.json'),
+      JSON.stringify(
+        {
+          metadata: remoteMetadata,
+          binary: binaryPath,
+          checksum
+        },
+        null,
+        2
+      )
+    )
+
+    const fetchMock = jest
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify([remoteMetadata])))
+
+    const result = await module.getDeployClientPath()
+    const cacheInfo = await module.getDeployCacheInfo()
+
+    expect(result).toEqual({
+      binary: binaryPath,
+      buildId: 'build-linux-stable'
+    })
+    expect(cacheInfo?.primaryKey).toContain('linux-x64-build-linux-stable')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('downloads a fresh binary when the local checksum mismatches', async () => {
+    const deployFolder = path.join(tempHome, '.swa', 'deploy')
+    const binaryContent = Buffer.from('checksum-mismatch-download')
+    const localBinaryPath = path.join(
+      deployFolder,
+      'build-checksum-mismatch',
+      'StaticSitesClient'
+    )
+    const remoteMetadata = {
+      version: 'checksum-refresh',
+      buildId: 'build-checksum-mismatch',
+      files: {
+        'linux-x64': {
+          url: 'https://example.invalid/linux-client',
+          sha: 'f73a2a6a2f8f337e8ac8b933f9397a13db8194d8794e12daab9ba396c7b9960f'
+        },
+        'win-x64': {
+          url: 'https://example.invalid/win-client',
+          sha: 'f73a2a6a2f8f337e8ac8b933f9397a13db8194d8794e12daab9ba396c7b9960f'
+        },
+        'osx-x64': {
+          url: 'https://example.invalid/osx-client',
+          sha: 'f73a2a6a2f8f337e8ac8b933f9397a13db8194d8794e12daab9ba396c7b9960f'
+        }
+      }
+    }
+
+    await fs.mkdir(path.dirname(localBinaryPath), { recursive: true })
+    await fs.writeFile(localBinaryPath, 'old-binary')
+    await fs.writeFile(
+      path.join(deployFolder, 'StaticSitesClient.json'),
+      JSON.stringify(
+        {
+          metadata: remoteMetadata,
+          binary: localBinaryPath,
+          checksum:
+            'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+        },
+        null,
+        2
+      )
+    )
+
+    const fetchMock = jest
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async (input: string | URL | Request) => {
+        if (`${input}` === 'https://aka.ms/swalocaldeploy') {
+          return new Response(JSON.stringify([remoteMetadata]))
+        }
+
+        return new Response(binaryContent)
+      })
+
+    const result = await getDeployClientPath('checksum-refresh')
+    const writtenBinary = await fs.readFile(result.binary)
+
+    expect(result.buildId).toBe('build-checksum-mismatch')
+    expect(writtenBinary.equals(binaryContent)).toBe(true)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
   it('returns undefined cache info when release metadata cannot be fetched', async () => {
@@ -612,6 +747,48 @@ describe('static-site-client.ts', () => {
       .then(() => true)
       .catch(() => false)
     expect(exists).toBe(false)
+  })
+
+  it('waits for drain when the binary write stream applies backpressure', async () => {
+    const binaryContent = Buffer.from('backpressure-binary-content')
+    const checksum =
+      '37f5aaf4565ae9ca8eda7b0a5e3eb6f4c1066ae3915d5f1de55b78ee4c576818'
+    const remoteMetadata = {
+      version: 'backpressure-download',
+      buildId: 'build-backpressure',
+      files: {
+        'linux-x64': {
+          url: 'https://example.invalid/linux-client',
+          sha: checksum
+        },
+        'win-x64': {
+          url: 'https://example.invalid/win-client',
+          sha: checksum
+        },
+        'osx-x64': {
+          url: 'https://example.invalid/osx-client',
+          sha: checksum
+        }
+      }
+    }
+    const module = await importStaticSiteClientWithOs({
+      writeStreamHighWaterMark: 1
+    })
+
+    jest
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async (input: string | URL | Request) => {
+        if (`${input}` === 'https://aka.ms/swalocaldeploy') {
+          return new Response(JSON.stringify([remoteMetadata]))
+        }
+
+        return new Response(binaryContent)
+      })
+
+    const result = await module.getDeployClientPath('backpressure-download')
+    const writtenBinary = await fs.readFile(result.binary)
+
+    expect(writtenBinary.equals(binaryContent)).toBe(true)
   })
 
   it('downloads the windows client binary with an exe extension', async () => {
