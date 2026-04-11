@@ -24,7 +24,7 @@ describe('main.ts', () => {
     core.getInput.mockImplementation((name: string) => {
       const inputs: Record<string, string> = {
         'app-location': 'dist',
-        environment: 'production'
+        'environment-name': 'production'
       }
 
       return inputs[name] ?? ''
@@ -102,7 +102,7 @@ describe('main.ts', () => {
         'deployment-token': '   ',
         'app-name': '   ',
         'resource-group-name': '   ',
-        environment: '   ',
+        'environment-name': '   ',
         'api-language': '   ',
         'api-version': '   '
       }
