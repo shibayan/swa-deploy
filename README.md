@@ -58,7 +58,7 @@ jobs:
     app-location: dist
     api-location: api
     api-language: node
-    environment: preview
+    environment-name: preview
     deployment-token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
 ```
 
@@ -103,7 +103,7 @@ jobs:
 | `deployment-token`    | No       |              | Deployment token (falls back to `SWA_CLI_DEPLOYMENT_TOKEN` env var)                  |
 | `app-name`            | No       |              | Static Web App name used to resolve a deployment token from Azure Resource Manager   |
 | `resource-group-name` | No       |              | Resource group name for `app-name`; when provided, skips subscription-wide discovery |
-| `environment`         | No       | `production` | Target environment — `production`, `preview`, or a custom name                       |
+| `environment-name`    | No       | `production` | Target environment — `production`, `preview`, or a custom name                       |
 | `api-language`        | No       |              | API runtime language: `node`, `python`, `dotnet`, or `dotnetisolated`                |
 | `api-version`         | No       |              | API runtime version (defaults are `22` for Node, `3.11` for Python, `8.0` for .NET)  |
 

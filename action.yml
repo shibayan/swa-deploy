@@ -31,7 +31,7 @@ inputs:
       Resource group name for the target Static Web App. When provided, Azure
       Resource Manager lookup skips subscription-wide app discovery.
     required: false
-  environment:
+  environment-name:
     description: Target deployment environment such as preview or production
     required: false
     default: 'production'
