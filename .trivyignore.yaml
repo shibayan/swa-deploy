@@ -1,8 +1,9 @@
+---
 secrets:
-  # The `dist/` directory contains bundled third-party library code from
-  # `@azure/storage-blob`, which includes the well-known Azurite (Azure Storage
-  # Emulator) default connection string. This is a publicly documented test key
-  # and is not a real credential.
   - id: azure-storage-account-key
     paths:
-      - dist/
+      - dist/index.js
+      - dist/index.js.map
+    statement: >
+      The bundled Azure Storage SDK includes Azurite's documented default
+      connection string for local emulator testing; it is not a real credential.
