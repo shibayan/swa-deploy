@@ -1,0 +1,9 @@
+---
+secrets:
+  - id: azure-storage-account-key
+    paths:
+      - dist/index.js
+      - dist/index.js.map
+    statement: >
+      The bundled Azure Storage SDK includes Azurite's documented default
+      connection string for local emulator testing; it is not a real credential.
