@@ -16,7 +16,8 @@ const releaseMetadataCache = new Map<
 >()
 
 export function getLocalClientMetadata():
-  StaticSiteClientLocalMetadata | undefined {
+  | StaticSiteClientLocalMetadata
+  | undefined {
   const metadataFilePath = path.join(
     DEPLOY_FOLDER,
     `${DEPLOY_BINARY_NAME}.json`
