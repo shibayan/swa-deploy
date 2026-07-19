@@ -415,10 +415,7 @@ describe('deploy.ts', () => {
       2,
       '22222222-2222-2222-2222-222222222222'
     )
-    expect(createStaticSitesClient).toHaveBeenNthCalledWith(
-      3,
-      '22222222-2222-2222-2222-222222222222'
-    )
+    expect(createStaticSitesClient).toHaveBeenCalledTimes(2)
   })
 
   it('fails when the Azure subscription list is empty for Azure login token resolution', async () => {

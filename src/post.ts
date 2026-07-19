@@ -5,8 +5,6 @@ export async function runPost(): Promise<void> {
   try {
     await saveStaticSiteClientCache()
   } catch (error) {
-    if (error instanceof Error) {
-      core.setFailed(error.message)
-    }
+    core.setFailed(error instanceof Error ? error.message : String(error))
   }
 }

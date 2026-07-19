@@ -30,11 +30,11 @@ describe('post.ts', () => {
     expect(core.setFailed).toHaveBeenCalledWith('cache save failed')
   })
 
-  it('ignores non-Error failures from cache save', async () => {
+  it('fails the action on non-Error failures from cache save', async () => {
     cache.saveStaticSiteClientCache.mockRejectedValueOnce('cache save failed')
 
     await runPost()
 
-    expect(core.setFailed).not.toHaveBeenCalled()
+    expect(core.setFailed).toHaveBeenCalledWith('cache save failed')
   })
 })

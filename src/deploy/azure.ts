@@ -1,15 +1,18 @@
-import {
-  WebSiteManagementClient,
-  type StaticSiteARMResource
-} from '@azure/arm-appservice'
+import { WebSiteManagementClient } from '@azure/arm-appservice'
 import { SubscriptionClient } from '@azure/arm-resources-subscriptions'
 import { AzureCliCredential } from '@azure/identity'
 import type {
   AzureSubscription,
   DeploymentDependencies,
+  StaticSiteResource,
   StaticSitesOperations,
   StaticWebAppLocation
 } from './types.js'
+
+interface ResolvedStaticWebApp extends StaticWebAppLocation {
+  displayName?: string
+  client: StaticSitesOperations
+}
 
 export async function resolveDeploymentToken(
   inputs: {
@@ -52,9 +55,6 @@ async function getDeploymentTokenFromAzure(
   >
 ): Promise<string> {
   const location = await resolveStaticWebAppLocation(inputs, dependencies)
-  const staticSitesClient = dependencies.createStaticSitesClient(
-    location.subscriptionId
-  )
 
   dependencies.debug(
     `Resolving deployment token with Azure Resource Manager SDK for Static Web App "${inputs.appName}" in subscription "${location.subscriptionId}".`
@@ -62,7 +62,7 @@ async function getDeploymentTokenFromAzure(
 
   let payload
   try {
-    payload = await staticSitesClient.listStaticSiteSecrets(
+    payload = await location.client.listStaticSiteSecrets(
       location.resourceGroupName,
       inputs.appName as string
     )
@@ -95,7 +95,7 @@ async function resolveStaticWebAppLocation(
     DeploymentDependencies,
     'createStaticSitesClient' | 'listSubscriptions' | 'debug'
   >
-): Promise<StaticWebAppLocation> {
+): Promise<ResolvedStaticWebApp> {
   const subscriptions = await dependencies.listSubscriptions()
   if (subscriptions.length === 0) {
     throw new Error(
@@ -120,7 +120,8 @@ async function resolveStaticWebAppLocation(
         return {
           subscriptionId: subscription.subscriptionId,
           resourceGroupName,
-          displayName: subscription.displayName
+          displayName: subscription.displayName,
+          client: staticSitesClient
         }
       }
 
@@ -129,11 +130,7 @@ async function resolveStaticWebAppLocation(
   )
 
   const matches = results.filter(
-    (
-      result
-    ): result is StaticWebAppLocation & {
-      displayName: string | undefined
-    } => result !== undefined
+    (result): result is ResolvedStaticWebApp => result !== undefined
   )
 
   if (matches.length === 0) {
@@ -189,23 +186,12 @@ async function findStaticWebAppResourceGroup(
     }
   }
 
-  try {
-    return await resolveStaticWebAppResourceGroup(
-      staticWebAppName,
-      subscriptionId,
-      staticSitesClient,
-      dependencies
-    )
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      isStaticWebAppNotFoundMessage(error.message)
-    ) {
-      return undefined
-    }
-
-    throw error
-  }
+  return resolveStaticWebAppResourceGroup(
+    staticWebAppName,
+    subscriptionId,
+    staticSitesClient,
+    dependencies
+  )
 }
 
 async function resolveStaticWebAppResourceGroup(
@@ -213,13 +199,12 @@ async function resolveStaticWebAppResourceGroup(
   subscriptionId: string,
   staticSitesClient: StaticSitesOperations,
   dependencies: Pick<DeploymentDependencies, 'debug'>
-): Promise<string> {
+): Promise<string | undefined> {
   dependencies.debug(
     `Resolving Static Web App resource group from Azure Resource Manager SDK for subscription "${subscriptionId}".`
   )
 
-  const matchingResources: Array<Pick<StaticSiteARMResource, 'id' | 'name'>> =
-    []
+  const matchingResources: StaticSiteResource[] = []
 
   try {
     for await (const resource of staticSitesClient.list()) {
@@ -238,9 +223,7 @@ async function resolveStaticWebAppResourceGroup(
   }
 
   if (matchingResources.length === 0) {
-    throw new Error(
-      `Static Web App "${staticWebAppName}" was not found in subscription "${subscriptionId}".`
-    )
+    return undefined
   }
 
   if (matchingResources.length > 1) {
@@ -313,10 +296,6 @@ function extractDeploymentToken(payload: {
 }
 
 function getAzureErrorMessage(error: unknown, fallbackMessage: string): string {
-  if (error instanceof Error && error.message.trim()) {
-    return error.message
-  }
-
   if (typeof error === 'object' && error !== null) {
     const maybeError = error as { message?: unknown }
     if (typeof maybeError.message === 'string' && maybeError.message.trim()) {
@@ -325,10 +304,6 @@ function getAzureErrorMessage(error: unknown, fallbackMessage: string): string {
   }
 
   return fallbackMessage
-}
-
-function isStaticWebAppNotFoundMessage(message: string): boolean {
-  return message.includes('was not found in subscription')
 }
 
 function isAzureNotFoundError(error: unknown): boolean {
