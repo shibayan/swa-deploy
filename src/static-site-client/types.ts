@@ -1,7 +1,7 @@
 export interface StaticSiteClientReleaseMetadata {
   version: string
   buildId: string
-  files: Record<string, { url: string; sha: string }>
+  files: Partial<Record<StaticSiteClientPlatform, { url: string; sha: string }>>
 }
 
 export interface StaticSiteClientLocalMetadata {
