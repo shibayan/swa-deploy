@@ -12,15 +12,13 @@ export async function run(): Promise<void> {
     try {
       await restoreStaticSiteClientCache()
     } catch (error) {
-      if (error instanceof Error) {
-        core.warning(
-          `Failed to restore the StaticSitesClient cache: ${error.message}`
-        )
-      }
+      core.warning(
+        `Failed to restore the StaticSitesClient cache: ${getErrorMessage(error)}`
+      )
     }
 
     const result = await runDeployment({
-      appLocation: getOptionalInput('app-location') ?? '.',
+      appLocation: getOptionalInput('app-location'),
       apiLocation: getOptionalInput('api-location'),
       deploymentToken: getOptionalInput('deployment-token'),
       appName: getOptionalInput('app-name'),
@@ -34,11 +32,15 @@ export async function run(): Promise<void> {
       core.setOutput('deployment-url', result.deploymentUrl)
     }
   } catch (error) {
-    if (error instanceof Error) core.setFailed(error.message)
+    core.setFailed(getErrorMessage(error))
   }
 }
 
 function getOptionalInput(name: string): string | undefined {
   const value = core.getInput(name)
   return value.trim() === '' ? undefined : value
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
 }

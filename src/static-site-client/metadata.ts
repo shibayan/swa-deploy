@@ -7,8 +7,23 @@ import {
 } from './constants.js'
 import type {
   StaticSiteClientLocalMetadata,
+  StaticSiteClientPlatform,
   StaticSiteClientReleaseMetadata
 } from './types.js'
+
+export function getReleaseFile(
+  metadata: StaticSiteClientReleaseMetadata,
+  platform: StaticSiteClientPlatform
+): { url: string; sha: string } {
+  const file = metadata.files[platform]
+  if (!file) {
+    throw new Error(
+      `StaticSitesClient release "${metadata.version}" does not provide a binary for platform "${platform}".`
+    )
+  }
+
+  return file
+}
 
 const releaseMetadataCache = new Map<
   string,

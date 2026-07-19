@@ -6,6 +6,7 @@ import { Readable } from 'node:stream'
 import { finished } from 'node:stream/promises'
 import type { ReadableStream as WebReadableStream } from 'node:stream/web'
 import { DEPLOY_BINARY_NAME, DEPLOY_FOLDER } from './constants.js'
+import { getReleaseFile } from './metadata.js'
 import type {
   StaticSiteClientPlatform,
   StaticSiteClientLocalMetadata,
@@ -16,7 +17,7 @@ export async function downloadAndValidateBinary(
   metadata: StaticSiteClientReleaseMetadata,
   platform: StaticSiteClientPlatform
 ): Promise<string> {
-  const release = metadata.files[platform]
+  const release = getReleaseFile(metadata, platform)
   const response = await fetch(release.url)
   if (!response.ok) {
     throw new Error(`Failed to download StaticSitesClient from ${release.url}.`)

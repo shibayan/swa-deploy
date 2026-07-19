@@ -81,14 +81,14 @@ describe('main.ts', () => {
     expect(runDeployment).toHaveBeenCalledTimes(1)
   })
 
-  it('Ignores non-Error cache restore failures and continues deployment', async () => {
+  it('Warns on non-Error cache restore failures and continues deployment', async () => {
     cache.restoreStaticSiteClientCache.mockRejectedValueOnce(
       'cache restore failed'
     )
 
     await run()
 
-    expect(core.warning).not.toHaveBeenCalledWith(
+    expect(core.warning).toHaveBeenCalledWith(
       'Failed to restore the StaticSitesClient cache: cache restore failed'
     )
     expect(runDeployment).toHaveBeenCalledTimes(1)
@@ -113,7 +113,7 @@ describe('main.ts', () => {
     await run()
 
     expect(runDeployment).toHaveBeenCalledWith({
-      appLocation: '.',
+      appLocation: undefined,
       apiLocation: undefined,
       deploymentToken: undefined,
       appName: undefined,
@@ -132,11 +132,11 @@ describe('main.ts', () => {
     expect(core.setOutput).not.toHaveBeenCalled()
   })
 
-  it('Ignores non-Error deployment failures', async () => {
+  it('Fails the action on non-Error deployment failures', async () => {
     runDeployment.mockRejectedValueOnce('deployment failed')
 
     await run()
 
-    expect(core.setFailed).not.toHaveBeenCalled()
+    expect(core.setFailed).toHaveBeenCalledWith('deployment failed')
   })
 })

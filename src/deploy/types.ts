@@ -1,5 +1,4 @@
-import type { ChildProcess } from 'node:child_process'
-import type { spawn } from 'node:child_process'
+import type { ChildProcess, spawn } from 'node:child_process'
 import type {
   StaticSiteARMResource,
   WebSiteManagementClient

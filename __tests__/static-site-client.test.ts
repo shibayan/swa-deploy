@@ -334,6 +334,22 @@ describe('static-site-client.ts', () => {
     )
   })
 
+  it('throws when the release metadata has no binary for the current platform', async () => {
+    const remoteMetadata = {
+      version: 'missing-platform',
+      buildId: 'build-missing-platform',
+      files: {}
+    }
+
+    jest
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify([remoteMetadata])))
+
+    await expect(getDeployClientPath('missing-platform')).rejects.toThrow(
+      'StaticSitesClient release "missing-platform" does not provide a binary for platform'
+    )
+  })
+
   it('retries metadata fetch after a transient error', async () => {
     const checksum =
       '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'

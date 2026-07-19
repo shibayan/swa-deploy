@@ -1,6 +1,10 @@
 import { DEPLOY_BINARY_STABLE_TAG, DEPLOY_FOLDER } from './constants.js'
 import { downloadAndValidateBinary } from './download.js'
-import { fetchReleaseMetadata, getLocalClientMetadata } from './metadata.js'
+import {
+  fetchReleaseMetadata,
+  getLocalClientMetadata,
+  getReleaseFile
+} from './metadata.js'
 import { getPlatform } from './platform.js'
 import type { StaticSiteClientCacheInfo } from './types.js'
 
@@ -18,7 +22,7 @@ export async function getDeployClientPath(
   }
 
   if (localClientMetadata) {
-    const localFile = remoteClientMetadata.files[platform]
+    const localFile = getReleaseFile(remoteClientMetadata, platform)
     if (
       localClientMetadata.metadata.buildId === remoteClientMetadata.buildId &&
       localClientMetadata.checksum.toLowerCase() === localFile.sha.toLowerCase()
@@ -44,7 +48,7 @@ export async function getDeployCacheInfo(
     return undefined
   }
 
-  const release = remoteClientMetadata.files[platform]
+  const release = getReleaseFile(remoteClientMetadata, platform)
   return {
     primaryKey: [
       'swa-deploy',
