@@ -54,13 +54,17 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends libjitterentropy3-dev
 
-      - uses: licensee/setup-licensed@0d52e575b3258417672be0dff2f115d7db8771d8 # v1.3.2
+      - name: Setup Licensed
+        id: setup-licensed
+        uses: licensee/setup-licensed@0d52e575b3258417672be0dff2f115d7db8771d8 # v1.3.2
         with:
           version: 4.x
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - if: ${{ failure() }}
-        name: Dump native extension logs
+      # If installing Licensed fails, show the native extension build logs.
+      - if: ${{ failure() && steps.setup-licensed.outcome == 'failure' }}
+        name: Dump Native Extension Logs
+        id: dump-logs
         run: |
           mkdir -p "$RUNNER_TEMP/gem-logs"
           gemdir="$(gem env gemdir)"
@@ -73,7 +77,9 @@ jobs:
           gcc --version; cmake --version; pkg-config --version
           find "$gemdir/gems" -path '*rugged-*/vendor/libgit2/build/libgit2.pc' -exec cat {} \;
 
-      - if: ${{ failure() }}
+      - if: ${{ failure() && steps.setup-licensed.outcome == 'failure' }}
+        name: Upload Native Extension Logs
+        id: upload-logs
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: gem-logs
@@ -93,8 +99,12 @@ jobs:
           git config --local user.email "licensed-ci@users.noreply.github.com"
           git config --local user.name "licensed-ci"
           git add .
-          git commit -m "Auto-update license files"
-          git push
+          if git diff --staged --quiet; then
+            echo "No license changes to commit."
+          else
+            git commit -m "Auto-update license files"
+            git push
+          fi
 
       # Last, check the status of the cached licenses.
       - name: Check Licenses
