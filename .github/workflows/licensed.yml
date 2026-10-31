@@ -5,12 +5,15 @@
 name: Licensed
 
 on:
-  pull_request:
-    branches:
-      - master
-  push:
-    branches:
-      - master
+  # Uncomment the below lines to run this workflow on pull requests and pushes
+  # to the default branch. This is useful for checking licenses before merging
+  # changes into the default branch.
+  # pull_request:
+  #   branches:
+  #     - master
+  # push:
+  #   branches:
+  #     - master
   workflow_dispatch:
 
 permissions:
@@ -41,8 +44,7 @@ jobs:
         id: setup-ruby
         uses: ruby/setup-ruby@824c0e29fdfc7d689c191c27acc969d2d04b7dd8 # v1.331.0
         with:
-          # licensed's native extensions do not build on Ruby 4 yet.
-          ruby-version: '3.4'
+          ruby-version: ruby
 
       - uses: licensee/setup-licensed@0d52e575b3258417672be0dff2f115d7db8771d8 # v1.3.2
         with:
