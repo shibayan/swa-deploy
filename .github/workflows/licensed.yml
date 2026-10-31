@@ -51,6 +51,26 @@ jobs:
           version: 4.x
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
+      - if: ${{ failure() }}
+        name: Dump native extension logs
+        run: |
+          mkdir -p "$RUNNER_TEMP/gem-logs"
+          gemdir="$(gem env gemdir)"
+          find "$gemdir/extensions" -name mkmf.log -o -name gem_make.out | while read -r f; do
+            echo "::group::$f"
+            cat "$f"
+            echo "::endgroup::"
+            cp --parents "$f" "$RUNNER_TEMP/gem-logs/"
+          done
+          gcc --version; cmake --version; pkg-config --version
+          find "$gemdir/gems" -path '*rugged-*/vendor/libgit2/build/libgit2.pc' -exec cat {} \;
+
+      - if: ${{ failure() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: gem-logs
+          path: ${{ runner.temp }}/gem-logs
+
       # If this is a workflow_dispatch event, update the cached licenses.
       - if: ${{ github.event_name == 'workflow_dispatch' }}
         name: Update Licenses
