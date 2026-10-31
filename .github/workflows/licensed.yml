@@ -5,15 +5,12 @@
 name: Licensed
 
 on:
-  # Uncomment the below lines to run this workflow on pull requests and pushes
-  # to the default branch. This is useful for checking licenses before merging
-  # changes into the default branch.
-  # pull_request:
-  #   branches:
-  #     - master
-  # push:
-  #   branches:
-  #     - master
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
   workflow_dispatch:
 
 permissions:
@@ -64,9 +61,13 @@ jobs:
         run: |
           git config --local user.email "licensed-ci@users.noreply.github.com"
           git config --local user.name "licensed-ci"
-          git add .
-          git commit -m "Auto-update license files"
-          git push
+          git add .licenses
+          if git diff --cached --quiet; then
+            echo "License files are already up to date."
+          else
+            git commit -m "Auto-update license files"
+            git push
+          fi
 
       # Last, check the status of the cached licenses.
       - name: Check Licenses
