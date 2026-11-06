@@ -42,6 +42,12 @@
     "@azure/arm-resources-subscriptions": "3.0.0",
     "@azure/identity": "4.14.1"
   },
+  "overrides": {
+    "minimatch@^10.2.2": "11.0.1",
+    "minimatch@^10.2.4": "11.0.1",
+    "minimatch@^10.2.5": "11.0.1",
+    "undici@^6.23.0": "6.29.1"
+  },
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@github/local-action": "7.0.1",
