@@ -177,6 +177,7 @@ describe('resolveDeploymentToken', () => {
       createStaticSitesClient: jest.fn(),
       listSubscriptions: jest.fn(),
       info: jest.fn(),
+      warning: jest.fn(),
       debug: jest.fn()
     }
 
@@ -195,6 +196,7 @@ describe('resolveDeploymentToken', () => {
       createStaticSitesClient: jest.fn(),
       listSubscriptions: jest.fn(),
       info: jest.fn(),
+      warning: jest.fn(),
       debug: jest.fn()
     }
 
@@ -213,11 +215,139 @@ describe('resolveDeploymentToken', () => {
       createStaticSitesClient: jest.fn(),
       listSubscriptions: jest.fn(),
       info: jest.fn(),
+      warning: jest.fn(),
       debug: jest.fn()
     }
 
     await expect(module.resolveDeploymentToken({}, deps)).rejects.toThrow(
       'A deployment token is required to deploy to Azure Static Web Apps.'
     )
+  })
+
+  function createSearchDependencies(error: unknown, useResourceGroup: boolean) {
+    const targetClient = {
+      list: jest.fn(() =>
+        createAsyncIterable([
+          {
+            name: 'my-app',
+            id: '/subscriptions/target/resourceGroups/my-group/providers/Microsoft.Web/staticSites/my-app'
+          }
+        ])
+      ),
+      getStaticSite: jest.fn().mockResolvedValue({}),
+      listStaticSiteSecrets: jest
+        .fn()
+        .mockResolvedValue({ properties: { apiKey: 'resolved-token' } })
+    }
+    const deniedClient = {
+      list: jest.fn(() => createFailingAsyncIterable(error)),
+      getStaticSite: jest.fn().mockRejectedValue(error),
+      listStaticSiteSecrets: jest.fn()
+    }
+    const deps = {
+      createStaticSitesClient: jest.fn((id: string) =>
+        id === 'target' ? targetClient : deniedClient
+      ),
+      listSubscriptions: jest
+        .fn()
+        .mockResolvedValue([
+          { subscriptionId: 'denied' },
+          { subscriptionId: 'target' }
+        ]),
+      info: jest.fn(),
+      debug: jest.fn(),
+      warning: jest.fn()
+    }
+    const inputs = {
+      appName: 'my-app',
+      resourceGroupName: useResourceGroup ? 'my-group' : undefined
+    }
+    return { deps, inputs, targetClient, deniedClient }
+  }
+
+  it.each([
+    [false, { statusCode: 403, message: 'Forbidden' }],
+    [true, { code: 'AuthorizationFailed', message: 'Forbidden' }]
+  ])(
+    'skips access-denied subscriptions (resource group: %s)',
+    async (useResourceGroup, error) => {
+      const module = await importAzureModule()
+      const { deps, inputs, targetClient, deniedClient } =
+        createSearchDependencies(error, useResourceGroup)
+
+      await expect(module.resolveDeploymentToken(inputs, deps)).resolves.toBe(
+        'resolved-token'
+      )
+      expect(deps.warning).toHaveBeenCalledWith(
+        expect.stringContaining('Skipping subscription "denied"')
+      )
+      expect(targetClient.listStaticSiteSecrets).toHaveBeenCalledWith(
+        'my-group',
+        'my-app'
+      )
+      expect(deniedClient.listStaticSiteSecrets).not.toHaveBeenCalled()
+    }
+  )
+
+  it('searches an explicit subscription without listing subscriptions', async () => {
+    const module = await importAzureModule()
+    const { deps, inputs } = createSearchDependencies(
+      new Error('Forbidden'),
+      true
+    )
+
+    await expect(
+      module.resolveDeploymentToken(
+        { ...inputs, subscriptionId: 'target' },
+        deps
+      )
+    ).resolves.toBe('resolved-token')
+    expect(deps.listSubscriptions).not.toHaveBeenCalled()
+    expect(deps.createStaticSitesClient).toHaveBeenCalledTimes(1)
+    expect(deps.createStaticSitesClient).toHaveBeenCalledWith('target')
+  })
+
+  it('fails for an explicitly selected subscription that denies access', async () => {
+    const module = await importAzureModule()
+    const { deps, inputs } = createSearchDependencies(
+      { statusCode: 403, message: 'Forbidden' },
+      true
+    )
+
+    await expect(
+      module.resolveDeploymentToken(
+        { ...inputs, subscriptionId: 'denied' },
+        deps
+      )
+    ).rejects.toThrow('Forbidden')
+    expect(deps.warning).not.toHaveBeenCalled()
+    expect(deps.listSubscriptions).not.toHaveBeenCalled()
+  })
+
+  it('reports access errors when no accessible subscription contains the app', async () => {
+    const module = await importAzureModule()
+    const { deps, inputs, targetClient } = createSearchDependencies(
+      { statusCode: 403, message: 'Forbidden' },
+      false
+    )
+    targetClient.list.mockImplementation(() => createAsyncIterable([]))
+
+    await expect(module.resolveDeploymentToken(inputs, deps)).rejects.toThrow(
+      'Forbidden'
+    )
+    expect(targetClient.listStaticSiteSecrets).not.toHaveBeenCalled()
+  })
+
+  it('does not ignore service failures even when another subscription matches', async () => {
+    const module = await importAzureModule()
+    const { deps, inputs, targetClient } = createSearchDependencies(
+      { statusCode: 503, message: 'Service Unavailable' },
+      false
+    )
+
+    await expect(module.resolveDeploymentToken(inputs, deps)).rejects.toThrow(
+      'Service Unavailable'
+    )
+    expect(targetClient.listStaticSiteSecrets).not.toHaveBeenCalled()
   })
 })

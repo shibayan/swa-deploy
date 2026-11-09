@@ -49,6 +49,7 @@ describe('main.ts', () => {
       deploymentToken: undefined,
       appName: undefined,
       resourceGroupName: undefined,
+      subscriptionId: undefined,
       environment: 'production',
       apiLanguage: undefined,
       apiVersion: undefined
@@ -102,6 +103,7 @@ describe('main.ts', () => {
         'deployment-token': '   ',
         'app-name': '   ',
         'resource-group-name': '   ',
+        'subscription-id': '   ',
         'environment-name': '   ',
         'api-language': '   ',
         'api-version': '   '
@@ -118,10 +120,23 @@ describe('main.ts', () => {
       deploymentToken: undefined,
       appName: undefined,
       resourceGroupName: undefined,
+      subscriptionId: undefined,
       environment: undefined,
       apiLanguage: undefined,
       apiVersion: undefined
     })
+  })
+
+  it('passes the subscription-id input to deployment', async () => {
+    core.getInput.mockImplementation((name: string) =>
+      name === 'subscription-id' ? 'target-subscription' : ''
+    )
+
+    await run()
+
+    expect(runDeployment).toHaveBeenCalledWith(
+      expect.objectContaining({ subscriptionId: 'target-subscription' })
+    )
   })
 
   it('Does not set deployment-url when deployment does not return one', async () => {

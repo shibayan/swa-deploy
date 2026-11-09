@@ -79,8 +79,8 @@ function emitCompleteLines(
 }
 
 function parseDeploymentUrl(line: string): string | undefined {
-  const match = line.match(/https?:\/\/\S+/)
-  return match?.[0]
+  const match = line.match(/Visit your site at:\s*(https?:\/\/\S+)/)
+  return match?.[1]
 }
 
 // eslint-disable-next-line no-control-regex

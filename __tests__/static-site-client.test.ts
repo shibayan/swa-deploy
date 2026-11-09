@@ -16,7 +16,7 @@ describe('static-site-client.ts', () => {
     platform?: NodeJS.Platform
   }) {
     const p = options.platform ?? (os.platform() as NodeJS.Platform)
-    const a = options.arch ?? os.arch()
+    const a = options.arch ?? 'x64'
     return {
       ...core,
       platform: {
@@ -51,7 +51,7 @@ describe('static-site-client.ts', () => {
     jest.unstable_mockModule('node:os', () => ({
       ...os,
       homedir: () => tempHome,
-      arch: options.arch ?? os.arch,
+      arch: options.arch ?? (() => 'x64'),
       platform: options.platform ?? os.platform
     }))
     jest.unstable_mockModule('@actions/core', () =>
@@ -67,12 +67,8 @@ describe('static-site-client.ts', () => {
   beforeAll(async () => {
     tempHome = await fs.mkdtemp(path.join(os.tmpdir(), 'swa-home-'))
 
-    jest.unstable_mockModule('node:os', () => ({
-      ...os,
-      homedir: () => tempHome
-    }))
     ;({ cleanUp, getDeployCacheInfo, getDeployClientPath } =
-      await import('../src/static-site-client.js'))
+      await importStaticSiteClientWithOs())
   })
 
   beforeEach(async () => {

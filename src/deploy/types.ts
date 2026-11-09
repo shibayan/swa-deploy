@@ -10,6 +10,7 @@ export interface DeployInputs {
   deploymentToken?: string
   appName?: string
   resourceGroupName?: string
+  subscriptionId?: string
   environment?: string
   apiLanguage?: string
   apiVersion?: string
