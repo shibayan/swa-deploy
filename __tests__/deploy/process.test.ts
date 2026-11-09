@@ -130,9 +130,9 @@ describe('deploy/process.ts', () => {
       )
 
       child.stdout.write('Documentation: https://learn.microsoft.com/\n')
-      child.stdout.write('\u001b[32mVisit your si')
+      child.stdout.write('\u001b[32mVisit your site')
       child.stdout.write(
-        `te at: https://actual-site.azurestaticapps.net\u001b[0m${ending}`
+        ` at: https://actual-site.azurestaticapps.net\u001b[0m${ending}`
       )
       child.stdout.end()
       child.stderr.end()

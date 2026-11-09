@@ -114,15 +114,15 @@ before starting the deployment client.
 | `deployment-token`    | No       |              | Deployment token (falls back to `SWA_CLI_DEPLOYMENT_TOKEN` env var)                           |
 | `app-name`            | No       |              | Static Web App name used to resolve a deployment token from Azure Resource Manager            |
 | `resource-group-name` | No       |              | Resource group name for `app-name`; when provided, skips subscription-wide discovery          |
-| `subscription-id`     | No       |              | Azure subscription to search; skips subscription discovery when provided                     |
+| `subscription-id`     | No       |              | Azure subscription to search; skips subscription discovery when provided                      |
 | `environment-name`    | No       | `production` | Target environment — `production`, `preview`, or a custom name                                |
 | `api-language`        | No       |              | API runtime language: `node`, `python`, `dotnet`, or `dotnetisolated`                         |
 | `api-version`         | No       |              | API runtime version (defaults: `22` node, `3.11` python, `8.0` dotnet, `10.0` dotnetisolated) |
 
 ## Outputs
 
-| Name             | Description                                                       |
-| ---------------- | ----------------------------------------------------------------- |
+| Name             | Description                                                                       |
+| ---------------- | --------------------------------------------------------------------------------- |
 | `deployment-url` | URL from the `Visit your site at:` success message emitted by `StaticSitesClient` |
 
 ## License
