@@ -23,6 +23,7 @@ export async function run(): Promise<void> {
       deploymentToken: getOptionalInput('deployment-token'),
       appName: getOptionalInput('app-name'),
       resourceGroupName: getOptionalInput('resource-group-name'),
+      subscriptionId: getOptionalInput('subscription-id'),
       environment: getOptionalInput('environment-name'),
       apiLanguage: getOptionalInput('api-language'),
       apiVersion: getOptionalInput('api-version')

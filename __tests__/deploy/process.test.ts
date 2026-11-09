@@ -120,6 +120,44 @@ describe('deploy/process.ts', () => {
     expect(info).toHaveBeenCalledWith('real line')
   })
 
+  it.each(['\n', ''])(
+    'ignores unrelated URLs and parses a split success line ending with %j',
+    async (ending) => {
+      const child = new MockChildProcess()
+      const resultPromise = watchDeployProcess(
+        child as ChildProcessWithoutNullStreams,
+        { info: jest.fn(), warning: jest.fn() }
+      )
+
+      child.stdout.write('Documentation: https://learn.microsoft.com/\n')
+      child.stdout.write('\u001b[32mVisit your si')
+      child.stdout.write(
+        `te at: https://actual-site.azurestaticapps.net\u001b[0m${ending}`
+      )
+      child.stdout.end()
+      child.stderr.end()
+      child.emit('close', 0)
+
+      await expect(resultPromise).resolves.toBe(
+        'https://actual-site.azurestaticapps.net'
+      )
+    }
+  )
+
+  it('does not return an unrelated URL without a success message', async () => {
+    const child = new MockChildProcess()
+    const resultPromise = watchDeployProcess(
+      child as ChildProcessWithoutNullStreams,
+      { info: jest.fn(), warning: jest.fn() }
+    )
+
+    child.stdout.end('Documentation: https://learn.microsoft.com/')
+    child.stderr.end()
+    child.emit('close', 0)
+
+    await expect(resultPromise).resolves.toBeUndefined()
+  })
+
   it('parses a deployment URL from stdout', async () => {
     const child = new MockChildProcess()
     const info = jest.fn()
