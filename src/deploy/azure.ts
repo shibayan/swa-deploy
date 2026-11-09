@@ -104,29 +104,31 @@ async function resolveStaticWebAppLocation(
   }
 
   const results = await Promise.all(
-    subscriptions.map(async (subscription) => {
-      const staticSitesClient = dependencies.createStaticSitesClient(
-        subscription.subscriptionId
-      )
-      const resourceGroupName = await findStaticWebAppResourceGroup(
-        inputs.appName as string,
-        inputs.resourceGroupName,
-        subscription.subscriptionId,
-        staticSitesClient,
-        dependencies
-      )
+    subscriptions.map(
+      async (subscription): Promise<ResolvedStaticWebApp | undefined> => {
+        const staticSitesClient = dependencies.createStaticSitesClient(
+          subscription.subscriptionId
+        )
+        const resourceGroupName = await findStaticWebAppResourceGroup(
+          inputs.appName as string,
+          inputs.resourceGroupName,
+          subscription.subscriptionId,
+          staticSitesClient,
+          dependencies
+        )
 
-      if (resourceGroupName) {
-        return {
-          subscriptionId: subscription.subscriptionId,
-          resourceGroupName,
-          displayName: subscription.displayName,
-          client: staticSitesClient
+        if (resourceGroupName) {
+          return {
+            subscriptionId: subscription.subscriptionId,
+            resourceGroupName,
+            displayName: subscription.displayName,
+            client: staticSitesClient
+          }
         }
-      }
 
-      return undefined
-    })
+        return undefined
+      }
+    )
   )
 
   const matches = results.filter(

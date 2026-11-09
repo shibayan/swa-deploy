@@ -64,9 +64,13 @@ jobs:
         run: |
           git config --local user.email "licensed-ci@users.noreply.github.com"
           git config --local user.name "licensed-ci"
-          git add .
-          git commit -m "Auto-update license files"
-          git push
+          git add .licenses
+          if git diff --cached --quiet; then
+            echo "License files are already up to date."
+          else
+            git commit -m "Auto-update license files"
+            git push
+          fi
 
       # Last, check the status of the cached licenses.
       - name: Check Licenses
