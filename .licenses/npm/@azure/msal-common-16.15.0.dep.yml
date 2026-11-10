@@ -1,6 +1,6 @@
 ---
 name: "@azure/msal-common"
-version: 16.14.1
+version: 16.15.0
 type: npm
 summary: Microsoft Authentication Library for js
 homepage:
