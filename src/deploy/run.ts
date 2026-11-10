@@ -111,7 +111,9 @@ export async function runDeployment(
     SWA_CLI_DEPLOY_BINARY: `${binary}@${buildId}`
   }
 
-  if (!isProductionEnvironment(deploymentEnvironment)) {
+  if (isProductionEnvironment(deploymentEnvironment)) {
+    delete env.DEPLOYMENT_ENVIRONMENT
+  } else {
     env.DEPLOYMENT_ENVIRONMENT = deploymentEnvironment
   }
 

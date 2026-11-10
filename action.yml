@@ -31,6 +31,11 @@ inputs:
       Resource group name for the target Static Web App. When provided, Azure
       Resource Manager lookup skips subscription-wide app discovery.
     required: false
+  subscription-id:
+    description:
+      Azure subscription containing the Static Web App. When provided, skips
+      subscription discovery and searches only this subscription.
+    required: false
   environment-name:
     description: Target deployment environment such as preview or production
     required: false

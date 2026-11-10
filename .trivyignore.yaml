@@ -7,3 +7,14 @@ secrets:
     statement: >
       The bundled Azure Storage SDK includes Azurite's documented default
       connection string for local emulator testing; it is not a real credential.
+
+vulnerabilities:
+  - id: CVE-2026-118764
+    paths:
+      - package-lock.json
+    statement: >
+      minimatch 10.x has no patched release and @actions/glob requires ^10. The
+      action only passes its own fixed cache path to @actions/glob, so crafted
+      glob patterns cannot reach minimatch. Revisit once @actions/glob allows
+      minimatch 11.
+    expired_at: 2027-01-31

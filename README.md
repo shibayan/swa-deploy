@@ -92,26 +92,38 @@ jobs:
           app-location: dist
           app-name: my-static-web-app
           resource-group-name: my-resource-group
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 ```
+
+Set `subscription-id` to search only that subscription, without listing all
+subscriptions. Otherwise, the action searches accessible subscriptions and warns
+when a subscription denies access. Other lookup failures and multiple matching
+apps remain errors. If no app is found and any subscription denied access, the
+action reports the access error.
+
+`environment-name` takes precedence over an inherited `DEPLOYMENT_ENVIRONMENT`.
+The default `production` and its alias `prod` clear that environment variable
+before starting the deployment client.
 
 ## Inputs
 
-| Name                  | Required | Default      | Description                                                                          |
-| --------------------- | -------- | ------------ | ------------------------------------------------------------------------------------ |
-| `app-location`        | No       | `.`          | Directory containing the prebuilt frontend assets                                    |
-| `api-location`        | No       |              | Directory containing the Azure Functions API                                         |
-| `deployment-token`    | No       |              | Deployment token (falls back to `SWA_CLI_DEPLOYMENT_TOKEN` env var)                  |
-| `app-name`            | No       |              | Static Web App name used to resolve a deployment token from Azure Resource Manager   |
-| `resource-group-name` | No       |              | Resource group name for `app-name`; when provided, skips subscription-wide discovery |
-| `environment-name`    | No       | `production` | Target environment — `production`, `preview`, or a custom name                       |
-| `api-language`        | No       |              | API runtime language: `node`, `python`, `dotnet`, or `dotnetisolated`                |
-| `api-version`         | No       |              | API runtime version (defaults are `22` for Node, `3.11` for Python, `8.0` for .NET)  |
+| Name                  | Required | Default      | Description                                                                                   |
+| --------------------- | -------- | ------------ | --------------------------------------------------------------------------------------------- |
+| `app-location`        | No       | `.`          | Directory containing the prebuilt frontend assets                                             |
+| `api-location`        | No       |              | Directory containing the Azure Functions API                                                  |
+| `deployment-token`    | No       |              | Deployment token (falls back to `SWA_CLI_DEPLOYMENT_TOKEN` env var)                           |
+| `app-name`            | No       |              | Static Web App name used to resolve a deployment token from Azure Resource Manager            |
+| `resource-group-name` | No       |              | Resource group name for `app-name`; when provided, skips subscription-wide discovery          |
+| `subscription-id`     | No       |              | Azure subscription to search; skips subscription discovery when provided                      |
+| `environment-name`    | No       | `production` | Target environment — `production`, `preview`, or a custom name                                |
+| `api-language`        | No       |              | API runtime language: `node`, `python`, `dotnet`, or `dotnetisolated`                         |
+| `api-version`         | No       |              | API runtime version (defaults: `22` node, `3.11` python, `8.0` dotnet, `10.0` dotnetisolated) |
 
 ## Outputs
 
-| Name             | Description                                                       |
-| ---------------- | ----------------------------------------------------------------- |
-| `deployment-url` | URL reported by `StaticSitesClient` after a successful deployment |
+| Name             | Description                                                                       |
+| ---------------- | --------------------------------------------------------------------------------- |
+| `deployment-url` | URL from the `Visit your site at:` success message emitted by `StaticSitesClient` |
 
 ## License
 

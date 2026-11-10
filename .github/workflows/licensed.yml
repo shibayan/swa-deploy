@@ -95,9 +95,9 @@ jobs:
         run: |
           git config --local user.email "licensed-ci@users.noreply.github.com"
           git config --local user.name "licensed-ci"
-          git add .
-          if git diff --staged --quiet; then
-            echo "No license changes to commit."
+          git add .licenses
+          if git diff --cached --quiet; then
+            echo "License files are already up to date."
           else
             git commit -m "Auto-update license files"
             git push

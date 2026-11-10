@@ -19,10 +19,15 @@ export async function resolveDeploymentToken(
     deploymentToken?: string
     appName?: string
     resourceGroupName?: string
+    subscriptionId?: string
   },
   dependencies: Pick<
     DeploymentDependencies,
-    'createStaticSitesClient' | 'listSubscriptions' | 'info' | 'debug'
+    | 'createStaticSitesClient'
+    | 'listSubscriptions'
+    | 'info'
+    | 'debug'
+    | 'warning'
   >
 ): Promise<string> {
   const deploymentToken =
@@ -48,10 +53,11 @@ async function getDeploymentTokenFromAzure(
   inputs: {
     appName?: string
     resourceGroupName?: string
+    subscriptionId?: string
   },
   dependencies: Pick<
     DeploymentDependencies,
-    'createStaticSitesClient' | 'listSubscriptions' | 'debug'
+    'createStaticSitesClient' | 'listSubscriptions' | 'debug' | 'warning'
   >
 ): Promise<string> {
   const location = await resolveStaticWebAppLocation(inputs, dependencies)
@@ -90,50 +96,78 @@ async function resolveStaticWebAppLocation(
   inputs: {
     appName?: string
     resourceGroupName?: string
+    subscriptionId?: string
   },
   dependencies: Pick<
     DeploymentDependencies,
-    'createStaticSitesClient' | 'listSubscriptions' | 'debug'
+    'createStaticSitesClient' | 'listSubscriptions' | 'debug' | 'warning'
   >
 ): Promise<ResolvedStaticWebApp> {
-  const subscriptions = await dependencies.listSubscriptions()
+  const subscriptions: AzureSubscription[] = inputs.subscriptionId
+    ? [{ subscriptionId: inputs.subscriptionId }]
+    : await dependencies.listSubscriptions()
   if (subscriptions.length === 0) {
     throw new Error(
       'Azure subscription could not be determined. Ensure azure/login has already run and that the current Azure CLI session can list subscriptions.'
     )
   }
 
-  const results = await Promise.all(
-    subscriptions.map(async (subscription) => {
-      const staticSitesClient = dependencies.createStaticSitesClient(
-        subscription.subscriptionId
-      )
-      const resourceGroupName = await findStaticWebAppResourceGroup(
-        inputs.appName as string,
-        inputs.resourceGroupName,
-        subscription.subscriptionId,
-        staticSitesClient,
-        dependencies
-      )
+  const results = await Promise.allSettled(
+    subscriptions.map(
+      async (subscription): Promise<ResolvedStaticWebApp | undefined> => {
+        const staticSitesClient = dependencies.createStaticSitesClient(
+          subscription.subscriptionId
+        )
+        const resourceGroupName = await findStaticWebAppResourceGroup(
+          inputs.appName as string,
+          inputs.resourceGroupName,
+          subscription.subscriptionId,
+          staticSitesClient,
+          dependencies
+        )
 
-      if (resourceGroupName) {
-        return {
-          subscriptionId: subscription.subscriptionId,
-          resourceGroupName,
-          displayName: subscription.displayName,
-          client: staticSitesClient
+        if (resourceGroupName) {
+          return {
+            subscriptionId: subscription.subscriptionId,
+            resourceGroupName,
+            displayName: subscription.displayName,
+            client: staticSitesClient
+          }
         }
+
+        return undefined
+      }
+    )
+  )
+
+  const matches: ResolvedStaticWebApp[] = []
+  let searchError: unknown
+  for (const [index, result] of results.entries()) {
+    if (result.status === 'rejected') {
+      const error = result.reason as Error & {
+        cause?: { statusCode?: number; code?: string }
+      }
+      if (
+        inputs.subscriptionId ||
+        (error.cause?.statusCode !== 403 &&
+          error.cause?.code !== 'AuthorizationFailed')
+      ) {
+        throw error
       }
 
-      return undefined
-    })
-  )
-
-  const matches = results.filter(
-    (result): result is ResolvedStaticWebApp => result !== undefined
-  )
+      searchError = error
+      dependencies.warning(
+        `Skipping subscription "${subscriptions[index].subscriptionId}" because access was denied: ${error.message}`
+      )
+    } else if (result.value) {
+      matches.push(result.value)
+    }
+  }
 
   if (matches.length === 0) {
+    if (searchError) {
+      throw searchError
+    }
     throw new Error(
       `Static Web App "${inputs.appName}" was not found in any accessible subscription.`
     )
@@ -149,7 +183,7 @@ async function resolveStaticWebAppLocation(
       .join(', ')
 
     throw new Error(
-      `Static Web App "${inputs.appName}" was found in multiple subscriptions: ${subscriptionsDescription}. Restrict the search further by setting resource-group-name.`
+      `Static Web App "${inputs.appName}" was found in multiple subscriptions: ${subscriptionsDescription}. Restrict the search further by setting subscription-id or resource-group-name.`
     )
   }
 

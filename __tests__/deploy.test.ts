@@ -728,37 +728,45 @@ describe('deploy.ts', () => {
     )
   })
 
-  it('does not set DEPLOYMENT_ENVIRONMENT for production aliases', async () => {
-    const appRoot = path.join(tempRoot, 'dist')
-    const child = new MockChildProcess()
+  it.each(['prod', 'production', 'PRODUCTION', undefined])(
+    'clears inherited DEPLOYMENT_ENVIRONMENT for %s',
+    async (environment) => {
+      jest.replaceProperty(process, 'env', {
+        ...process.env,
+        DEPLOYMENT_ENVIRONMENT: 'preview'
+      })
+      const appRoot = path.join(tempRoot, 'dist')
+      const child = new MockChildProcess()
 
-    await fs.mkdir(appRoot, { recursive: true })
+      await fs.mkdir(appRoot, { recursive: true })
 
-    const spawn = jest.fn(() => {
-      queueMicrotask(() => {
-        child.stdout?.end()
-        child.stderr?.end()
-        child.emit('close', 0)
+      const spawn = jest.fn(() => {
+        queueMicrotask(() => {
+          child.stdout?.end()
+          child.stderr?.end()
+          child.emit('close', 0)
+        })
+
+        return child as ChildProcessWithoutNullStreams
       })
 
-      return child as ChildProcessWithoutNullStreams
-    })
+      await runDeployment(
+        {
+          appLocation: 'dist',
+          deploymentToken: 'test-token',
+          environment
+        },
+        {
+          ...dependencies,
+          spawn
+        }
+      )
 
-    await runDeployment(
-      {
-        appLocation: 'dist',
-        deploymentToken: 'test-token',
-        environment: 'prod'
-      },
-      {
-        ...dependencies,
-        spawn
-      }
-    )
-
-    const [, , options] = spawn.mock.calls[0]
-    expect(options.env.DEPLOYMENT_ENVIRONMENT).toBeUndefined()
-  })
+      const [, , options] = spawn.mock.calls[0]
+      expect(options.env.DEPLOYMENT_ENVIRONMENT).toBeUndefined()
+      expect(process.env.DEPLOYMENT_ENVIRONMENT).toBe('preview')
+    }
+  )
 
   it('defaults the deployment environment to production when omitted', async () => {
     const appRoot = path.join(tempRoot, 'dist')
@@ -1559,7 +1567,9 @@ describe('deploy.ts', () => {
     expect(getDefaultApiVersion('node')).toBe('22')
     expect(getDefaultApiVersion('python')).toBe('3.11')
     expect(getDefaultApiVersion('dotnet')).toBe('8.0')
-    expect(getDefaultApiVersion('dotnetisolated')).toBe('8.0')
+    expect(getDefaultApiVersion('dotnetisolated')).toBe('10.0')
+    expect(getDefaultApiVersion('Node')).toBe('22')
     expect(getDefaultApiVersion('unknown-lang')).toBeUndefined()
+    expect(getDefaultApiVersion('constructor')).toBeUndefined()
   })
 })
